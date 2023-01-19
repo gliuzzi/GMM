@@ -4,7 +4,7 @@
       LOGICAL TRANSP
       DOUBLE PRECISION W1( LW1 ), W2( LW2 )
 C
-C  Problem name : ENGVAL1   
+C  Problem name : VAREIGVL  
 C
 C  -- produced by SIFdecode 1.0
 C
@@ -12,6 +12,8 @@ C  TRANSP = .FALSE. <=> W2 = U * W1
 C  TRANSP = .TRUE.  <=> W2 = U(transpose) * W1
 C
       INTEGER I
+      GO TO (99998,99998
+     *                                                        ), ITYPE
 C
 C  Elements without internal variables.
 C

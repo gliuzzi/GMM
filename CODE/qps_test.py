@@ -146,7 +146,8 @@ class Solver:
             self.strategy = 'd2search'
             sol, info = self.solveMomentum()
         elif self.method == 'Momentum-plane-deriv-free':
-            self.strategy = 'd2search'
+            #self.strategy = 'd2search'
+            self.strategy = 'd2search-deriv-free'
             sol, info = self.solveMomentum()
         elif self.method == 'Momentum-plane-approx':
             self.strategy = 'inexact-d2s'
@@ -283,10 +284,13 @@ class Solver:
     def solvePlaneSearch_roma(self, iterative=False):
         xk = self.problem.get_x0()
         n_iters = 0
+        num_fails = 0
         xk_1 = np.copy(xk)
         f_1, g_1 = self.f_g(xk_1)
         alpha, beta = 0, 0
         aArm = 1
+        cosmax = -np.inf
+        cosmin = np.inf
         g_norm = np.inf
         count_barzilai = 0
         while True:
@@ -298,6 +302,13 @@ class Solver:
             if g_norm < self.grad_tol or n_iters >= self.max_iters:
                 break
             if count_barzilai < 1:
+                # compute cosine of angle
+                gnr = np.linalg.norm(g)
+                momnr = np.linalg.norm(xk-xk_1)
+                if momnr > 0:
+                    cosphi = g.dot(xk-xk_1)/(gnr*momnr)
+                    cosmax = cosphi if cosphi > cosmax else cosmax
+                    cosmin = cosphi if cosphi < cosmin else cosmin
                 if iterative:
                     ab, fExp = self.iterative_quadratic_plane_search(xk, xk_1, f, f_1, g, alpha, beta)
                 else:
@@ -309,6 +320,7 @@ class Solver:
                     alpha, beta = ab[0], ab[1]
                     aArm = max(np.abs(alpha), 10 * self.min_step)
                 else:
+                    num_fails += 1
                     count_barzilai = self.recovery_steps
                     alpha_start = self.bb_step(xk - xk_1, g - g_1, inverse=True)
                     aArm = self.armijoLS(x=xk, f=f, g=g, d=-g, alpha0=alpha_start, gamma=self.gamma,
@@ -326,11 +338,12 @@ class Solver:
             f_1, g_1 = f, g
             xk = new_x
             n_iters += 1
-        return xk, {"iters": n_iters, "f": f, "g_norm": g_norm}
+        return xk, {"iters": n_iters, "f": f, "g_norm": g_norm, "nfails": num_fails, "cosmin": cosmin, "cosmax": cosmax}
 
     def solvePlaneSearch(self, iterative=False):
         xk = self.problem.get_x0()
         n_iters=0
+        num_fails = 0
         xk_1 = np.copy(xk)
         f_1, g_1 = self.f_g(xk_1)
         alpha, beta = 0,0
@@ -355,6 +368,7 @@ class Solver:
                     alpha, beta = ab[0], ab[1]
                     aArm = max(np.abs(alpha), 10*self.min_step)
                 else:
+                    num_fails += 1
                     count_barzilai = self.recovery_steps
                     alpha_start = self.bb_step(xk-xk_1, g-g_1, inverse=True)
                     aArm = self.armijoLS(x=xk, f=f, g=g, d=-g, alpha0=alpha_start, gamma=self.gamma, min_step=self.min_step)
@@ -372,7 +386,7 @@ class Solver:
             f_1, g_1 = f, g
             xk = new_x
             n_iters += 1
-        return xk, {"iters": n_iters, "f": f, "g_norm": g_norm}
+        return xk, {"iters": n_iters, "f": f, "g_norm": g_norm, "nfails": num_fails, "cosmin": "--", "cosmax": "--"}
 
     def quadratic_plane_search(self, xk, xk_1, f, f_1, g, alpha, beta):
         ab0 = np.zeros(2)
@@ -510,6 +524,8 @@ class Solver:
                 M, m = np.sqrt(max_ev), np.sqrt(min_ev)
         n_iters=0
         xk_1 = np.copy(xk)
+        alpha = self.alpha0
+        beta = 0
         while True:
             f,g = self.f_g(xk)
             g_norm = np.linalg.norm(g,self.gtol_ord)
@@ -524,7 +540,8 @@ class Solver:
                 alpha, beta = ab[0], ab[1]
             elif self.strategy == 'd2search-deriv-free':
                 d_mom = xk-xk_1
-                ab = self.bidimensional_search(xk, -g, d_mom, alpha0=self.alpha0, beta0=0,multistart=self.multistart, deriv_free=True, maxfev=2*self.problem.n)
+                #ab = self.bidimensional_search(xk, -g, d_mom, alpha0=self.alpha0, beta0=0,multistart=self.multistart, deriv_free=True, maxfev=100)
+                ab = self.bidimensional_search(xk, -g, d_mom, alpha0=alpha, beta0=beta,multistart=self.multistart, deriv_free=True, maxfev=100)
                 alpha, beta = ab[0], ab[1]
             elif self.strategy == 'quadratic':
                 alpha = 4/(M+m)**2
@@ -656,10 +673,15 @@ class Solver:
         res_tab = []
         for solver in solvers:
             sol, info = self.solve(method=solver, eps_grad=eps_grad, max_iters=max_iters, gamma=gamma, min_step=1e-10, gtol_ord=gtol_ord)
-            res_tab.append([solver, self.problem.n, info['time'], info['iters'], info['f'], info['g_norm'], info['fevals'], info['gevals']])
-        
+            if 'nfails' in info:
+                res_tab.append([solver, self.problem.n, info['time'], info['iters'], info['f'], info['g_norm'],
+                                info['fevals'], info['gevals'], info['nfails'], info['cosmin'], info['cosmax']])
+            else:
+                res_tab.append(
+                    [solver, self.problem.n, info['time'], info['iters'], info['f'], info['g_norm'], info['fevals'],
+                     info['gevals'], '--', '--', '--'])
 
-        table = tabulate(res_tab, headers=['Algorithm', 'n', 't', 'n_it', 'f_opt', 'g_norm', 'fevals', 'gevals'], tablefmt='orgtbl')
+        table = tabulate(res_tab, headers=['Algorithm', 'n', 't', 'n_it', 'f_opt', 'g_norm', 'fevals', 'gevals', 'nfails','cosmin','cosmax'], tablefmt='orgtbl')
         print(table)
 
 
@@ -682,7 +704,7 @@ def make_random_psd_matrix(size, ncond=None, eigenvalues=None):
 
 
 #solvers = ['Armijo', 'Extrapolation', 'Barzilai', 'Momentum', 'Momentum-plane-deriv-free', 'Momentum-plane', 'RandomMomentum',  'Momentum-plane-multistart', 'QPS', 'QPS-iterative',  'scipy_cg',  'scipy_lbfgs']
-solvers = ['QPS-roma']
+solvers = ['Momentum-plane-deriv-free', 'QPS', 'QPS-roma']
 
 eps_grad = 1e-3
 
@@ -699,7 +721,13 @@ problems = ['GENROSE', 'ARWHEAD', 'BROYDN7D', 'CRAGGLVY', 'DIXMAANA', 'DIXMAANB'
             'LIARWHD', 'MOREBV', 'NCB20', 'NONCVXU2', 'NONCVXUN', 'NONDIA', 'NONDQUAR', 'POWELLSG',
             'POWER', 'SCHMVETT', 'SROSENBR', 'TOINTGSS', 'TQUARTIC', 'VAREIGVL', 'WOODS']
 
-#problems = ['GENROSE']
+problems = ['GENROSE', 'ARWHEAD', 'BROYDN7D', 'CRAGGLVY', 'DIXMAANA', 'DIXMAANB', 'DIXMAANC', 'DIXMAAND', 'DIXMAANE',
+            'DIXMAANF', 'DIXMAANG', 'DIXMAANH', 'DIXMAANI', 'DIXMAANJ', 'DIXMAANK', 'DIXMAANL', 'DIXMAANM',
+            'DIXMAANN', 'DIXMAANO', 'DIXMAANP', 'EDENSCH', 'ENGVAL1', 'FLETCHCR', 'FMINSURF',
+            'LIARWHD', 'NCB20', 'NONCVXU2', 'NONCVXUN', 'NONDIA', 'NONDQUAR', 'POWELLSG',
+            'POWER', 'SCHMVETT', 'SROSENBR', 'TOINTGSS', 'TQUARTIC', 'VAREIGVL', 'WOODS']
+
+#problems = ['VAREIGVL']
 
 
 for p in problems:
