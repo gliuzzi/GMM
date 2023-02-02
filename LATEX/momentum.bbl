@@ -1,0 +1,49 @@
+\begin{thebibliography}{1}
+
+\bibitem{bertsekas1997nonlinear}
+D.~P. Bertsekas.
+\newblock Nonlinear programming.
+\newblock {\em Journal of the Operational Research Society}, 48(3):334--334,
+  1997.
+
+\bibitem{Combettes2009}
+P.~L. Combettes.
+\newblock {\em Fej{\'e}r monotonicity in convex optimizationFej{\'e}r
+  Monotonicity in Convex Optimization}, pages 1016--1024.
+\newblock Springer US, Boston, MA, 2009.
+
+\bibitem{ghadimi2015global}
+E.~Ghadimi, H.~R. Feyzmahdavian, and M.~Johansson.
+\newblock Global convergence of the heavy-ball method for convex optimization.
+\newblock In {\em 2015 European control conference (ECC)}, pages 310--315.
+  IEEE, 2015.
+
+\bibitem{lessard2016analysis}
+L.~Lessard, B.~Recht, and A.~Packard.
+\newblock Analysis and design of optimization algorithms via integral quadratic
+  constraints.
+\newblock {\em SIAM Journal on Optimization}, 26(1):57--95, 2016.
+
+\bibitem{polyak1964some}
+B.~T. Polyak.
+\newblock Some methods of speeding up the convergence of iteration methods.
+\newblock {\em Ussr computational mathematics and mathematical physics},
+  4(5):1--17, 1964.
+
+\bibitem{polyak1987introduction}
+B.~T. Polyak.
+\newblock Introduction to optimization. optimization software.
+\newblock {\em Inc., Publications Division, New York}, 1:32, 1987.
+
+\bibitem{sun2019non}
+T.~Sun, P.~Yin, D.~Li, C.~Huang, L.~Guan, and H.~Jiang.
+\newblock Non-ergodic convergence analysis of heavy-ball algorithms.
+\newblock In {\em Proceedings of the AAAI Conference on Artificial
+  Intelligence}, volume~33, pages 5033--5040, 2019.
+
+\bibitem{zavriev1993heavy}
+S.~Zavriev and F.~Kostyuk.
+\newblock Heavy-ball method in nonconvex optimization problems.
+\newblock {\em Computational Mathematics and Modeling}, 4(4):336--341, 1993.
+
+\end{thebibliography}
