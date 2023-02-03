@@ -306,7 +306,7 @@ class Solver:
             if not deriv_free:
                 return minimize(f2, ab, jac=g2, method="CG", options={"disp": False, "gtol": 1e-3, "maxiter": 10})
             else:
-                return minimize(f2, ab, method="Nelder-Mead", bounds=[[0, ab[0]+10], [ab[1]-10, ab[1]+10]],
+                return minimize(f2, ab, method="Nelder-Mead", bounds=[[ab[0]-10, ab[0]+10], [ab[1]-10, ab[1]+10]],
                                 options={"disp": False, "maxfev": maxfev})
 
         #        alpha0=0.5
