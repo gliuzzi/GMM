@@ -163,6 +163,8 @@ class Solver:
             sol, info = self.solvePlaneSearch(iterative=True)
         elif self.method == 'QPS-roma':
             sol, info = self.solvePlaneSearch_roma()
+        elif self.method == 'CGlike':
+            sol, info = self.solvePlaneSearch_CG()
         elif self.method == 'Barzilai':
             sol, info = self.solveBarzilaiBorwein()
         elif self.method == 'ConjGrad':
@@ -283,6 +285,126 @@ class Solver:
             multistart-=1
         return best
 
+    def bidimensional_search_box(self, x, d1, d2, alpha0, beta0=0, multistart=0, deriv_free=False, maxfev=10):
+        def f2(ab):
+            return self.f(x + ab[0] * d1 + ab[1] * d2)
+
+        def g2(ab):
+            g = self.g(x + ab[0] * d1 + ab[1] * d2)
+            return [np.dot(g, d1), np.dot(g, d2)]
+
+        def fg2(ab):
+            g = self.g(x + ab[0] * d1 + ab[1] * d2)
+            return self.f(x + ab[0] * d1 + ab[1] * d2), np.array(np.dot(g, d1), np.dot(g, d2))
+
+        def inner_BB(ab):
+            BB = nmgrad2(2, ab, 1.e-5, 5, 0, fg2)
+            x, f, ng, ifail, x_current, f_current, g_current = BB.minimize()
+            return x, f
+
+        def inner_solve(ab):
+            if not deriv_free:
+                return minimize(f2, ab, jac=g2, method="CG", options={"disp": False, "gtol": 1e-3, "maxiter": 10})
+            else:
+                return minimize(f2, ab, method="Nelder-Mead", bounds=[[0, ab[0]+10], [ab[1]-10, ab[1]+10]],
+                                options={"disp": False, "maxfev": maxfev})
+
+        #        alpha0=0.5
+        #        beta0=0.
+        solution = inner_solve([alpha0, beta0])
+        best, best_f = solution.x, solution.fun
+        # best, best_f = inner_BB(np.array([alpha0, beta0]))
+        while multistart > 0:
+            alpha0 = 0.1 * np.random.uniform(low=0, high=1.0)
+            beta0 = 4 * np.random.uniform(low=0, high=1.0)
+            solution = inner_solve([alpha0, beta0])
+            if solution.fun < best_f:
+                best = solution.x
+                best_f = solution.fun
+            multistart -= 1
+        return best
+
+    def solvePlaneSearch_roma_box(self, iterative=False):
+        xk = self.problem.get_x0()
+        n_iters = 0
+        num_fails = 0
+        xk_1 = np.copy(xk)
+        f_1, g_1 = self.f_g(xk_1)
+        alpha, beta = 0, 0
+        aArm = 1
+        cosmax = -np.inf
+        cosmin = np.inf
+        g_norm = np.inf
+        count_barzilai = 0
+        while True:
+            f, g = self.f_g(xk)
+            g_norm_prev = g_norm
+            g_norm = np.linalg.norm(g, self.gtol_ord)
+            if g_norm > 1e6:
+                g = g / g_norm
+            if g_norm < self.grad_tol or n_iters >= self.max_iters:
+                break
+            if count_barzilai < 1:
+                # compute cosine of angle
+                gnr = np.linalg.norm(g)
+                momnr = np.linalg.norm(xk-xk_1)
+                if momnr > 0:
+                    cosphi = g.dot(xk-xk_1)/(gnr*momnr)
+                    cosmax = cosphi if cosphi > cosmax else cosmax
+                    cosmin = cosphi if cosphi < cosmin else cosmin
+                if iterative:
+                    ab, fExp = self.iterative_quadratic_plane_search(xk, xk_1, f, f_1, g, alpha, beta)
+                else:
+                    ab = self.quadratic_plane_search(xk, xk_1, f, f_1, g, alpha, beta)
+                    #ab = np.zeros(2)
+                    #ab[0]=alpha
+                    #ab[0]=0.
+                    #ab[1]=beta
+                    #ab[1]=0.
+                    ab[0]=np.maximum(0.,ab[0])
+                    #print('alfa=',ab[0],'     beta=',ab[1] )
+                    fExp = self.f(xk - ab[0] * g + ab[1] * (xk - xk_1))
+                    #print('f=',f,'   fnew=',fExp)
+                    #if True:
+                    if fExp > f:
+                        ab[0]=0.
+                        ab[1]=0.
+                        ab = self.bidimensional_search_box(xk, -g, xk - xk_1, alpha0=ab[0], beta0=ab[1], deriv_free=True, maxfev=10)
+                        fExp = self.f(xk - ab[0] * g + ab[1] * (xk - xk_1))
+                    #ab = self.bidimensional_search_box(xk, -g, xk - xk_1, alpha0=ab[0], beta0=ab[1], deriv_free=True, maxfev=10)
+                    #fExp = self.f(xk - ab[0] * g + ab[1] * (xk - xk_1))
+                    #print('alfa=',ab[0],'     beta=',ab[1] )
+                    #print('f=',f,'   fnew=',fExp)
+                    #print()
+                    #input()
+                if fExp < f:
+                    alpha, beta = ab[0], ab[1]
+                    aArm = max(np.abs(alpha), 10 * self.min_step)
+                else:
+                    #print('Barzilai')
+                    num_fails += 1
+                    count_barzilai = self.recovery_steps
+                    alpha_start = self.bb_step(xk - xk_1, g - g_1, inverse=True)
+                    aArm = self.armijoLS(x=xk, f=f, g=g, d=-g, alpha0=alpha_start, gamma=self.gamma,
+                                         min_step=self.min_step)
+
+                    alpha, beta = aArm, 0
+            else:
+                count_barzilai -= 1
+                alpha_start = self.bb_step(xk - xk_1, g - g_1, inverse=True)
+                aArm = self.armijoLS(x=xk, f=f, g=g, d=-g, alpha0=alpha_start, gamma=self.gamma, min_step=self.min_step)
+
+                alpha, beta = aArm, 0
+
+            self.alfas.append(alpha)
+            self.betas.append(beta)
+            new_x = xk - alpha * g + beta * (xk - xk_1)
+            xk_1 = xk
+            f_1, g_1 = f, g
+            xk = new_x
+            n_iters += 1
+        return xk, {"iters": n_iters, "f": f, "g_norm": g_norm, "nfails": num_fails, "cosmin": cosmin, "cosmax": cosmax}
+
     def solvePlaneSearch_roma(self, iterative=False):
         xk = self.problem.get_x0()
         n_iters = 0
@@ -315,7 +437,74 @@ class Solver:
                     ab, fExp = self.iterative_quadratic_plane_search(xk, xk_1, f, f_1, g, alpha, beta)
                 else:
                     ab = self.quadratic_plane_search(xk, xk_1, f, f_1, g, alpha, beta)
-                    ab = self.bidimensional_search(xk, -g, xk - xk_1, alpha0=ab[0], beta0=ab[1], deriv_free=True, maxfev=100)
+                    #xk, f, f_1, g, g_1
+                    #ab = self.CGlike_search(xk, f, f_1, g, g_1)
+                    ab = self.bidimensional_search(xk, -g, xk - xk_1, alpha0=ab[0], beta0=ab[1], deriv_free=True, maxfev=10)
+
+                    fExp = self.f(xk - ab[0] * g + ab[1] * (xk - xk_1))
+                if fExp < f:
+                    alpha, beta = ab[0], ab[1]
+                    aArm = max(np.abs(alpha), 10 * self.min_step)
+                else:
+                    num_fails += 1
+                    count_barzilai = self.recovery_steps
+                    alpha_start = self.bb_step(xk - xk_1, g - g_1, inverse=True)
+                    aArm = self.armijoLS(x=xk, f=f, g=g, d=-g, alpha0=alpha_start, gamma=self.gamma,
+                                         min_step=self.min_step)
+
+                    alpha, beta = aArm, 0
+            else:
+                count_barzilai -= 1
+                alpha_start = self.bb_step(xk - xk_1, g - g_1, inverse=True)
+                aArm = self.armijoLS(x=xk, f=f, g=g, d=-g, alpha0=alpha_start, gamma=self.gamma, min_step=self.min_step)
+
+                alpha, beta = aArm, 0
+
+            self.alfas.append(alpha)
+            self.betas.append(beta)
+            new_x = xk - alpha * g + beta * (xk - xk_1)
+            xk_1 = xk
+            f_1, g_1 = f, g
+            xk = new_x
+            n_iters += 1
+        return xk, {"iters": n_iters, "f": f, "g_norm": g_norm, "nfails": num_fails, "cosmin": cosmin, "cosmax": cosmax}
+
+    def solvePlaneSearch_CG(self, iterative=False):
+        xk = self.problem.get_x0()
+        n_iters = 0
+        num_fails = 0
+        xk_1 = np.copy(xk)
+        f_1, g_1 = self.f_g(xk_1)
+        alpha, beta = 0, 0
+        aArm = 1
+        cosmax = -np.inf
+        cosmin = np.inf
+        g_norm = np.inf
+        count_barzilai = 0
+        while True:
+            f, g = self.f_g(xk)
+            g_norm_prev = g_norm
+            g_norm = np.linalg.norm(g, self.gtol_ord)
+            if g_norm > 1e6:
+                g = g / g_norm
+            if g_norm < self.grad_tol or n_iters >= self.max_iters:
+                break
+            if count_barzilai < 1:
+                # compute cosine of angle
+                gnr = np.linalg.norm(g)
+                momnr = np.linalg.norm(xk-xk_1)
+                if momnr > 0:
+                    cosphi = g.dot(xk-xk_1)/(gnr*momnr)
+                    cosmax = cosphi if cosphi > cosmax else cosmax
+                    cosmin = cosphi if cosphi < cosmin else cosmin
+                if iterative:
+                    ab, fExp = self.iterative_quadratic_plane_search(xk, xk_1, f, f_1, g, alpha, beta)
+                else:
+                    #ab = self.quadratic_plane_search(xk, xk_1, f, f_1, g, alpha, beta)
+                    #xk, f, f_1, g, g_1
+                    ab = self.CGlike_search(xk, f, f_1, g, g_1)
+                    ab = self.bidimensional_search_box(xk, -g, xk - xk_1, alpha0=ab[0], beta0=ab[1], deriv_free=True, maxfev=10)
+                    #ab = self.bidimensional_search(xk, -g, xk - xk_1, alpha0=ab[0], beta0=ab[1], deriv_free=True, maxfev=10)
 
                     fExp = self.f(xk - ab[0] * g + ab[1] * (xk - xk_1))
                 if fExp < f:
@@ -392,6 +581,16 @@ class Solver:
             xk = new_x
             n_iters += 1
         return xk, {"iters": n_iters, "f": f, "g_norm": g_norm, "nfails": num_fails, "cosmin": "--", "cosmax": "--"}
+
+    def CGlike_search(self, xk, f, f_1, g, g_1):
+        ab = np.zeros(2)
+        eps = 1.e-6
+        xeps = xk - eps*g
+        Hg = (self.g(xeps) - g) / eps
+        gnrm2 = g.dot(g)
+        alpha0 = gnrm2 / (g.dot(Hg))
+        beta0 = gnrm2 / g_1.dot(g_1)
+        return np.array([alpha0,beta0])
 
     def quadratic_plane_search(self, xk, xk_1, f, f_1, g, alpha, beta):
         ab0 = np.zeros(2)
@@ -721,7 +920,7 @@ def make_random_psd_matrix(size, ncond=None, eigenvalues=None):
 #solvers = ['Armijo', 'Extrapolation', 'Barzilai', 'Momentum', 'Momentum-plane-deriv-free',
 #           'Momentum-plane', 'RandomMomentum',  'Momentum-plane-multistart', 'QPS', 'QPS-iterative',  'scipy_cg',  'scipy_lbfgs']
 #solvers = ['Momentum-plane-deriv-free', 'QPS', 'QPS-roma']
-solvers = ['QPS-roma','scipy_lbfgs']
+solvers = ['QPS', 'QPS-roma', 'CGlike','scipy_lbfgs']
 
 eps_grad = 1e-3
 
@@ -751,11 +950,16 @@ res_tutti = []
 for p in problems:
     print('{}'.format(p))
     P = Problem(p)
+    res_parz = []
     #res_tutti.append([p, P.n, '', '', '', '', '', '', '', '', ''])
     S = Solver(P)
     res = S.test_problem(solvers,max_iters=5000, eps_grad=eps_grad, gtol_ord=np.inf)
     for i,r in enumerate(res):
         res_tutti.append(r)
+        res_parz.append(r)
+    print(tabulate(res_parz, headers=['Algorithm', 'prob', 'n', 't', 'n_it', 'f_opt',
+                               'g_norm', 'fevals', 'gevals', 'nfails', 'cosmin', 'cosmax'], tablefmt='orgtbl')
+          )
 
 table = tabulate(res_tutti, headers=['Algorithm','prob', 'n', 't', 'n_it', 'f_opt',
     'g_norm', 'fevals', 'gevals', 'nfails', 'cosmin', 'cosmax'], tablefmt = 'orgtbl')

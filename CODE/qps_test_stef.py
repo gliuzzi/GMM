@@ -22,19 +22,19 @@ class Problem:
         return self.__p.obj(x)
 
     def f_g(self, x):
-        f = self.f(x)
+        #f = self.f(x)
         #g = self.gnum(x,f)
-        g = approx_fprime(x, self.f, 1.e-6)
-        return f,g
-        #return self.__p.obj(x, gradient=True)
+        #g = approx_fprime(x, self.f, 1.e-6)
+        #return f,g
+        return self.__p.obj(x, gradient=True)
 
     def g(self,x):
-        #_, gr = self.__p.obj(x,gradient=True)
-        #return gr
-        f = self.f(x)
+        _, gr = self.__p.obj(x,gradient=True)
+        return gr
+        #f = self.f(x)
         #g = self.gnum(x,f)
-        g = approx_fprime(x, self.f, 1.e-6)
-        return g
+        #g = approx_fprime(x, self.f, 1.e-6)
+        #return g
     def gnum(self,x,f):
         step = 1.e-6
         xp = np.copy(x)
