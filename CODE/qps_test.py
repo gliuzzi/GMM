@@ -506,8 +506,7 @@ class Solver:
                     fExp = self.f(xk - ab[0] * g + ab[1] * (xk - xk_1))
                     if fExp > f:
                         ab = self.bidimensional_search_box(xk, -g, xk - xk_1, alpha0=ab[0], beta0=ab[1], deriv_free=True, maxfev=10)
-                        #ab = self.bidimensional_search(xk, -g, xk - xk_1, alpha0=ab[0], beta0=ab[1], deriv_free=True, maxfev=10)
-                       fExp = self.f(xk - ab[0] * g + ab[1] * (xk - xk_1))
+                        fExp = self.f(xk - ab[0] * g + ab[1] * (xk - xk_1))
 
                 if fExp < f:
                     alpha, beta = ab[0], ab[1]
