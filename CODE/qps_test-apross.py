@@ -86,6 +86,7 @@ class Solver:
         self.method = method
         self.fevals = 0
         self.gevals = 0
+        self.nnegeig = 0
         self.problem = problem
         self.alpha0 = alpha0 
         self.gamma=gamma 
@@ -102,8 +103,6 @@ class Solver:
         self.gtol_ord = gtol_ord
         self.min_sample_val = 1e-8
         self.recovery_steps = recovery_steps
-
-
 
     def set_solver(self,method):
         self.method = method
@@ -405,7 +404,7 @@ class Solver:
             f_1, g_1 = f, g
             xk = new_x
             n_iters += 1
-        return xk, {"iters": n_iters, "f": f, "g_norm": g_norm, "nfails": num_fails, "cosmin": cosmin, "cosmax": cosmax}
+        return xk, {"iters": n_iters, "f": f, "g_norm": g_norm, "nfails": num_fails, "nnegeig": self.nnegeig, "cosmax": cosmax}
 
     def solvePlaneSearch_roma(self, iterative=False):
         xk = self.problem.get_x0()
@@ -469,7 +468,7 @@ class Solver:
             f_1, g_1 = f, g
             xk = new_x
             n_iters += 1
-        return xk, {"iters": n_iters, "f": f, "g_norm": g_norm, "nfails": num_fails, "cosmin": cosmin, "cosmax": cosmax}
+        return xk, {"iters": n_iters, "f": f, "g_norm": g_norm, "nfails": num_fails, "nnegeig": self.nnegeig, "cosmax": cosmax}
 
     def solvePlaneSearch_CG(self, iterative=False):
         xk = self.problem.get_x0()
@@ -535,7 +534,7 @@ class Solver:
             f_1, g_1 = f, g
             xk = new_x
             n_iters += 1
-        return xk, {"iters": n_iters, "f": f, "g_norm": g_norm, "nfails": num_fails, "cosmin": cosmin, "cosmax": cosmax}
+        return xk, {"iters": n_iters, "f": f, "g_norm": g_norm, "nfails": num_fails, "nnegeig": self.nnegeig, "cosmax": cosmax}
 
     def solvePlaneSearch(self, iterative=False, prova=False):
         xk = self.problem.get_x0()
@@ -586,7 +585,7 @@ class Solver:
             f_1, g_1 = f, g
             xk = new_x
             n_iters += 1
-        return xk, {"iters": n_iters, "f": f, "g_norm": g_norm, "nfails": num_fails, "cosmin": "--", "cosmax": "--"}
+        return xk, {"iters": n_iters, "f": f, "g_norm": g_norm, "nfails": num_fails, "nnegeig": self.nnegeig, "cosmax": "--"}
 
     def CGlike_search(self, xk, f, f_1, g, g_1):
         ab = np.zeros(2)
@@ -618,8 +617,8 @@ class Solver:
             print(alpha,' ',beta)
         fA = f
         fB = f_1
-        fC = self.f(xk+alpha*d1+beta*d2)
-        fD = self.f(xk+alpha*d1)
+        #fC = self.f(xk+alpha*d1+beta*d2)
+        #fD = self.f(xk+alpha*d1)
 
         #A = [0.5*alpha**2, 0.5*beta**2, alpha*beta]
         #A = np.vstack((A,[0.5*alpha**2, 0., 0.]))
@@ -631,24 +630,28 @@ class Solver:
         #rhs = np.vstack((rhs,[fB-fA+gab[1]]))
         #rhs = np.vstack((rhs,[self.f(xk+beta*d2)-f-gab[1]*beta]))
         #rhs = np.vstack((rhs,[self.f(xk-d1)-f+gab[0]]))
-        delta = 1.e-4
-        A = [0.5*delta**2, 0.0, 0.0]
-        rhs = [self.f(xk+delta*d1)]
-        A = np.vstack((A,[0.5*delta**2, 0.5*delta**2, delta*delta]))
-        rhs = np.vstack((rhs,[self.f(xk+delta*d1+delta*d2)]))
-        A = np.vstack((A,[0.0, 0.5*delta**2, 0.0]))
-        rhs = np.vstack((rhs,[self.f(xk+delta*d2)]))
+        delta = 1.e-3
+        #A = [0.5*delta**2, 0.0, 0.0]
+        #rhs = [self.f(xk+delta*d1)-f-gab[0]*delta]
+        A = [0.5*delta**2, 0.5*delta**2, delta*delta]
+        rhs = [self.f(xk+delta*d1+delta*d2)-f-gab[0]*delta-gab[1]*delta]
+        A = np.vstack((A,[0.5*delta**2, 0.5*delta**2, -delta*delta]))
+        rhs = np.vstack((rhs,[self.f(xk-delta*d1+delta*d2)-f+gab[0]*delta-gab[1]*delta]))
+        A = np.vstack((A,[0.0, 0.5, 0.0]))
+        rhs = np.vstack((rhs,[f_1-f+gab[1]]))
+        #A = np.vstack((A,[0.0, 0.5*delta**2, 0.0]))
+        #rhs = np.vstack((rhs,[self.f(xk+delta*d2)-f-gab[1]*delta]))
         if False:
             A = np.vstack((A,[0.5*delta**2, 0.5*delta**2, -delta*delta]))
-            rhs = np.vstack((rhs,[self.f(xk-delta*d1+delta*d2)]))
+            rhs = np.vstack((rhs,[self.f(xk-delta*d1+delta*d2)-f+gab[0]*delta-gab[1]*delta]))
             A = np.vstack((A,[0.5*delta**2, 0.0, 0.0]))
-            rhs = np.vstack((rhs,[self.f(xk-delta*d1)]))
+            rhs = np.vstack((rhs,[self.f(xk-delta*d1)-f+gab[0]*delta]))
             A = np.vstack((A,[0.5*delta**2, 0.5*delta**2, delta*delta]))
-            rhs = np.vstack((rhs,[self.f(xk-delta*d1-delta*d2)]))
+            rhs = np.vstack((rhs,[self.f(xk-delta*d1-delta*d2)-f+gab[0]*delta+gab[1]*delta]))
             A = np.vstack((A,[0.0, 0.5*delta**2, 0.0]))
-            rhs = np.vstack((rhs,[self.f(xk-delta*d2)]))
+            rhs = np.vstack((rhs,[self.f(xk-delta*d2)-f+gab[1]*delta]))
             A = np.vstack((A,[0.5*delta**2, 0.5*delta**2, -delta*delta]))
-            rhs = np.vstack((rhs,[self.f(xk+delta*d1-delta*d2)]))
+            rhs = np.vstack((rhs,[self.f(xk+delta*d1-delta*d2)-f-gab[0]*delta+gab[1]*delta]))
         #print(A)
         #print(rhs)
         #print(self.f(xk-d1),' ',f,' ',gab[0])
@@ -656,6 +659,7 @@ class Solver:
         #sol = np.linalg.pinv(A).dot(rhs)
         #print(sol)
         try:
+            #sol = np.linalg.lstsq(A, rhs, rcond=None)[0]
             sol = np.linalg.solve(A, rhs)
         except np.linalg.LinAlgError:
             sol = np.linalg.lstsq(A, rhs, rcond=None)[0]
@@ -667,13 +671,13 @@ class Solver:
         bc = sol[1,0]
         bb = sol[2,0]
 
-        bc1 = 2*(gab[1]+fB-fA)
-        ba1 = 2/(alpha**2)*(fD-alpha*gab[0]-fA)
-        bb1 = (fC-fA-gab[0]*alpha-gab[1]*beta-0.5*alpha*alpha*ba1-0.5*beta*beta*bc1)/(alpha*beta)
+        # bc1 = 2*(gab[1]+fB-fA)
+        # ba1 = 2/(alpha**2)*(fD-alpha*gab[0]-fA)
+        # bb1 = (fC-fA-gab[0]*alpha-gab[1]*beta-0.5*alpha*alpha*ba1-0.5*beta*beta*bc1)/(alpha*beta)
 
-        sol[0,0] = ba1
-        sol[1,0] = bc1
-        sol[2,0] = bb1
+        # sol[0,0] = ba1
+        # sol[1,0] = bc1
+        # sol[2,0] = bb1
         if False:
             print(A.dot(sol))
             print(rhs)
@@ -685,6 +689,19 @@ class Solver:
             input()
 
         Bab = np.array([[ba, bb], [bb, bc]])
+        try:
+            EIGV, EIGW = np.linalg.eig(Bab)
+        except np.linalg.LinAlgError:
+            print(A)
+            print(rhs)
+            print(Bab)
+            EIGV = np.zeros(2)
+            input()
+
+        if min(EIGV) < 0:
+            #print(EIGV)
+            self.nnegeig += 1
+            #input()
         #Bab = np.array([[ba1, bb1], [bb1, bc1]])
 
         try:
@@ -712,13 +729,17 @@ class Solver:
         fC = self.f(xk+alpha*d1+beta*d2)
         fD = self.f(xk+alpha*d1)
 
-
         bc = 2*(gab[1]+fB-fA)
         ba = 2/(alpha**2)*(fD-alpha*gab[0]-fA)
         bb = (fC-fA-gab[0]*alpha-gab[1]*beta-0.5*alpha*alpha*ba-0.5*beta*beta*bc)/(alpha*beta)
 
         Bab = np.array([[ba,bb],[bb,bc]])
-        
+        EIGV, EIGW = np.linalg.eig(Bab)
+        if min(EIGV) < 0:
+            #print(EIGV)
+            self.nnegeig += 1
+            #input()
+
         try:
             solution_closed = np.linalg.solve(Bab, -gab)
         except np.linalg.LinAlgError:
@@ -989,7 +1010,7 @@ class Solver:
 
             if 'nfails' in info:
                 res_tab.append([solver, self.problem.name, self.problem.n, info['time'], info['iters'], info['f'], info['g_norm'],
-                                info['fevals'], info['gevals'], info['nfails'], info['cosmin'], info['cosmax']])
+                                info['fevals'], info['gevals'], info['nfails'], info['nnegeig'], info['cosmax']])
             else:
                 res_tab.append(
                     [solver, self.problem.name, self.problem.n, info['time'], info['iters'], info['f'], info['g_norm'], info['fevals'],
@@ -1023,7 +1044,7 @@ def make_random_psd_matrix(size, ncond=None, eigenvalues=None):
 #           'Momentum-plane', 'RandomMomentum',  'Momentum-plane-multistart', 'QPS', 'QPS-iterative',  'scipy_cg',  'scipy_lbfgs']
 #solvers = ['Momentum-plane-deriv-free', 'QPS', 'QPS-roma']
 #solvers = ['QPS', 'QPS-roma', 'CGlike','scipy_lbfgs']
-solvers = ['QPS', 'QPS-approx']
+solvers = ['QPS', 'QPS-approx','scipy_lbfgs']
 
 eps_grad = 1e-3
 
@@ -1059,16 +1080,21 @@ for p in problems:
     for i,r in enumerate(res):
         res_tutti.append(r)
         res_parz.append(r)
+    r=["--", "--", "--", "--", "--", "--", "--", "--", "--", "--", "--", "--"]
+    res_tutti.append(r)		
     print(tabulate(res_parz, headers=['Algorithm', 'prob', 'n', 't', 'n_it', 'f_opt',
-                               'g_norm', 'fevals', 'gevals', 'nfails', 'cosmin', 'cosmax'], tablefmt='orgtbl')
+                               'g_norm', 'fevals', 'gevals', 'nfails', 'nnegeig', 'cosmax'], tablefmt='orgtbl')
           )
 
 table = tabulate(res_tutti, headers=['Algorithm','prob', 'n', 't', 'n_it', 'f_opt',
-    'g_norm', 'fevals', 'gevals', 'nfails', 'cosmin', 'cosmax'], tablefmt = 'orgtbl')
+    'g_norm', 'fevals', 'gevals', 'nfails', 'nnegeig', 'cosmax'], tablefmt = 'orgtbl')
 print(table)
-
+print(table)
+fr=open("risultati.txt","w")
+print(table,file=fr)
+fr.close()
 table = tabulate(res_tutti, headers=['Algorithm','prob', 'n', 't', 'n_it', 'f_opt',
-    'g_norm', 'fevals', 'gevals', 'nfails', 'cosmin', 'cosmax'], tablefmt = 'latex')
+    'g_norm', 'fevals', 'gevals', 'nfails', 'nnegeig', 'cosmax'], tablefmt = 'latex')
 print(table)
 
 '''
