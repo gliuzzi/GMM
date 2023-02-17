@@ -11,19 +11,10 @@ class Problem:
         if n:
             self.__p = pycutest.import_problem(name, sifParams={'N':n})
         else:
-            try:
-            	self.__p = pycutest.import_problem(name)
-            except ModuleNotFoundError:
-                self.__p = None
-        if self.__p == None:
-            self.n = -1
-            self.m = 0
-            self.name = name
-        else:
-            self.n = self.__p.n
-            self.m = self.__p.m
-            self.x0 = self.__p.x0
-            self.name = self.__p.name
+            self.__p = pycutest.import_problem(name)
+        self.n = self.__p.n
+        self.x0 = self.__p.x0
+        self.name = self.__p.name
 
     def f(self,x):
         return self.__p.obj(x)
@@ -177,6 +168,8 @@ class Solver:
             sol, info = self.solvePlaneSearch_roma()
         elif self.method == 'QPS-roma-box':
             sol, info = self.solvePlaneSearch_roma_box(prova=True)
+        elif self.method == 'QPS-matteo-box':
+            sol, info = self.solvePlaneSearch_roma_box()
         elif self.method == 'CGlike':
             sol, info = self.solvePlaneSearch_CG()
         elif self.method == 'Barzilai':
@@ -320,6 +313,8 @@ class Solver:
                              options={"iprint": -1, "maxcor": 5, "gtol": self.grad_tol, "ftol": 1e-30,"maxiter": 10})
             #return minimize(f2, ab, jac=g2, bounds=[[ab[0]-10, ab[0]+10], [ab[1]-10, ab[1]+10]], method="L-BFGS-B",
             #                 options={"iprint": -1, "maxcor": 5, "gtol": self.grad_tol, "ftol": 1e-30,"maxiter": 10})
+            #return minimize(f2, ab, jac=g2, bounds=[[0,10], [0,+10]], method="L-BFGS-B",
+            #                 options={"iprint": -1, "maxcor": 5, "gtol": self.grad_tol, "ftol": 1e-30,"maxiter": 10})
 
         def inner_solve(ab):
             if not deriv_free:
@@ -377,6 +372,9 @@ class Solver:
                 else:
                     if prova:
                         ab = self.quadratic_plane_search_prova(xk, xk_1, f, f_1, g, alpha, beta)
+                        #ab = np.zeros(2)
+                        #ab[0]=0.
+                        #ab[1]=0.
                     else:
                         ab = self.quadratic_plane_search(xk, xk_1, f, f_1, g, alpha, beta)
                     #ab = np.zeros(2)
@@ -386,13 +384,13 @@ class Solver:
                     #ab[1]=0.
                     ab[0]=np.maximum(0.,ab[0])
                     #print('alfa=',ab[0],'     beta=',ab[1] )
-                    fExp = self.f(xk - ab[0] * g + ab[1] * (xk - xk_1))
+                    #fExp = self.f(xk - ab[0] * g + ab[1] * (xk - xk_1))
                     #print('f=',f,'   fnew=',fExp)
-                    #if True:
-                    if True: #fExp > f:
+                    if True:
+                    #if fExp > f:
                         #ab[0]=0.
                         #ab[1]=0.
-                        ab = self.bidimensional_search_box(xk, -g, xk - xk_1, alpha0=ab[0], beta0=ab[1], deriv_free=True, maxfev=10)
+                        ab = self.bidimensional_search_box(xk, -g, xk - xk_1, alpha0=ab[0], beta0=ab[1], deriv_free=True, maxfev=5)
                         fExp = self.f(xk - ab[0] * g + ab[1] * (xk - xk_1))
                     #ab = self.bidimensional_search_box(xk, -g, xk - xk_1, alpha0=ab[0], beta0=ab[1], deriv_free=True, maxfev=10)
                     #fExp = self.f(xk - ab[0] * g + ab[1] * (xk - xk_1))
@@ -628,101 +626,120 @@ class Solver:
 
         def f2(ab):
             return self.f(xk - ab[0] * g + ab[1] * (xk - xk_1))
+        
+        # min_sample_val  = 1e-8
+        # if np.abs(alpha) <= min_sample_val:
+            # alpha = min_sample_val if alpha >= 0 else -min_sample_val
+        # if np.abs(beta) <= min_sample_val:
+            # beta = min_sample_val if beta >= 0 else -min_sample_val
 
-        min_sample_val  = 1e-8
-        if np.abs(alpha) <= min_sample_val:
-            alpha = min_sample_val if alpha >= 0 else -min_sample_val
-        if np.abs(beta) <= min_sample_val:
-            beta = min_sample_val if beta >= 0 else -min_sample_val
+        # if False:
+            # print(alpha,' ',beta)
+        # fA = f
+        # fB = f_1
+		# #fC = self.f(xk+alpha*d1+beta*d2)
+		# #fD = self.f(xk+alpha*d1)
 
-        if False:
-            print(alpha,'',beta)
-        fA = f
-        fB = f_1
-        #fC = self.f(xk+alpha*d1+beta*d2)
-        #fD = self.f(xk+alpha*d1)
+		# #A = [0.5*alpha**2, 0.5*beta**2, alpha*beta]
+		# #A = np.vstack((A,[0.5*alpha**2, 0., 0.]))
+		# #A = np.vstack((A,[0., 0.5, 0.]))
+		# #A = np.vstack((A,[0., 0.5*beta**2, 0.]))
+		# #A = np.vstack((A,[0.5, 0., 0.]))
+		# #rhs = [fC-fA-gab[0]*alpha-gab[1]*beta]
+		# #rhs = np.vstack((rhs,[fD-fA-gab[0]*alpha]))
+		# #rhs = np.vstack((rhs,[fB-fA+gab[1]]))
+		# #rhs = np.vstack((rhs,[self.f(xk+beta*d2)-f-gab[1]*beta]))
+		# #rhs = np.vstack((rhs,[self.f(xk-d1)-f+gab[0]]))
+        # delta = 1.e-3
+        # A = [0.5*delta**2, 0.0, 0.0]
+        # rhs = [self.f(xk+delta*d1)-f-gab[0]*delta]
+        # A = np.vstack((A,[0.5*delta**2,0.5*delta**2, delta*delta]))
+        # rhs = np.vstack((rhs,[self.f(xk+delta*d1+delta*d2)-f-gab[0]*delta-gab[1]*delta]))
+		# #rhs = np.vstack((rhs,[self.f(xk-delta*d1-delta*d2)-f+gab[0]*delta+gab[1]*delta]))
+		# #A = np.vstack((A,[0.5*delta**2, 0.5*delta**2, -delta*delta]))
+		# #rhs = np.vstack((rhs,[self.f(xk-delta*d1+delta*d2)-f+gab[0]*delta-gab[1]*delta]))
+		# #A = np.vstack((A,[0.0, 0.5, 0.0]))
+		# #rhs = np.vstack((rhs,[f_1-f+gab[1]]))
+        # A = np.vstack((A,[0.0, 0.5*delta**2, 0.0]))
+        # rhs = np.vstack((rhs,[self.f(xk+delta*d2)-f-gab[1]*delta]))
+        # if False:
+            # A = np.vstack((A,[0.5*delta**2, 0.5*delta**2, -delta*delta]))
+            # rhs = np.vstack((rhs,[self.f(xk-delta*d1+delta*d2)-f+gab[0]*delta-gab[1]*delta]))
+            # A = np.vstack((A,[0.5*delta**2, 0.0, 0.0]))
+            # rhs = np.vstack((rhs,[self.f(xk-delta*d1)-f+gab[0]*delta]))
+            # A = np.vstack((A,[0.5*delta**2, 0.5*delta**2, delta*delta]))
+            # rhs = np.vstack((rhs,[self.f(xk-delta*d1-delta*d2)-f+gab[0]*delta+gab[1]*delta]))
+            # A = np.vstack((A,[0.0, 0.5*delta**2, 0.0]))
+            # rhs = np.vstack((rhs,[self.f(xk-delta*d2)-f+gab[1]*delta]))
+            # A = np.vstack((A,[0.5*delta**2, 0.5*delta**2, -delta*delta]))
+            # rhs = np.vstack((rhs,[self.f(xk+delta*d1-delta*d2)-f-gab[0]*delta+gab[1]*delta]))
+		# #print(A)
+		# #print(rhs)
+		# #print(self.f(xk-d1),' ',f,' ',gab[0])
+		# #input()
+		# #sol = np.linalg.pinv(A).dot(rhs)
+		# #print(sol)
+        # try:
+			# #sol = np.linalg.lstsq(A, rhs, rcond=None)[0]
+            # sol = np.linalg.solve(A, rhs)
+        # except np.linalg.LinAlgError:
+            # sol = np.linalg.lstsq(A, rhs, rcond=None)[0]
+        # if False:
+            # print(A.dot(sol))
+            # print(rhs)
+			# #input()
+        # ba = sol[0,0]
+        # bc = sol[1,0]
+        # bb = sol[2,0]
+		
+        # ba2 = sol[0,0]
+        # bc2 = sol[1,0]
+        # bb2 = sol[2,0]		
 
-        #A = [0.5*alpha**2, 0.5*beta**2, alpha*beta]
-        #A = np.vstack((A,[0.5*alpha**2, 0., 0.]))
-        #A = np.vstack((A,[0., 0.5, 0.]))
-        #A = np.vstack((A,[0., 0.5*beta**2, 0.]))
-        #A = np.vstack((A,[0.5, 0., 0.]))
-        #rhs = [fC-fA-gab[0]*alpha-gab[1]*beta]
-        #rhs = np.vstack((rhs,[fD-fA-gab[0]*alpha]))
-        #rhs = np.vstack((rhs,[fB-fA+gab[1]]))
-        #rhs = np.vstack((rhs,[self.f(xk+beta*d2)-f-gab[1]*beta]))
-        #rhs = np.vstack((rhs,[self.f(xk-d1)-f+gab[0]]))
-        delta = 1.e-3
-        A = [0.5*delta**2, 0.0, 0.0]
-        rhs = [self.f(xk+delta*d1)-f-gab[0]*delta]
-        A = np.vstack((A,[0.5*delta**2, 0.5*delta**2, delta*delta]))
-        rhs = np.vstack((rhs,[self.f(xk+delta*d1+delta*d2)-f-gab[0]*delta-gab[1]*delta]))
-        #A = np.vstack((A,[0.5*delta**2, 0.5*delta**2, -delta*delta]))
-        #rhs = np.vstack((rhs,[self.f(xk-delta*d1+delta*d2)-f+gab[0]*delta-gab[1]*delta]))
-        #A = np.vstack((A,[0.0, 0.5, 0.0]))
-        #rhs = np.vstack((rhs,[f_1-f+gab[1]]))
-        A = np.vstack((A,[0.0, 0.5*delta**2, 0.0]))
-        rhs = np.vstack((rhs,[self.f(xk+delta*d2)-f-gab[1]*delta]))
-        if False:
-            A = np.vstack((A,[0.5*delta**2, 0.5*delta**2, -delta*delta]))
-            rhs = np.vstack((rhs,[self.f(xk-delta*d1+delta*d2)-f+gab[0]*delta-gab[1]*delta]))
-            A = np.vstack((A,[0.5*delta**2, 0.0, 0.0]))
-            rhs = np.vstack((rhs,[self.f(xk-delta*d1)-f+gab[0]*delta]))
-            A = np.vstack((A,[0.5*delta**2, 0.5*delta**2, delta*delta]))
-            rhs = np.vstack((rhs,[self.f(xk-delta*d1-delta*d2)-f+gab[0]*delta+gab[1]*delta]))
-            A = np.vstack((A,[0.0, 0.5*delta**2, 0.0]))
-            rhs = np.vstack((rhs,[self.f(xk-delta*d2)-f+gab[1]*delta]))
-            A = np.vstack((A,[0.5*delta**2, 0.5*delta**2, -delta*delta]))
-            rhs = np.vstack((rhs,[self.f(xk+delta*d1-delta*d2)-f-gab[0]*delta+gab[1]*delta]))
-        #print(A)
-        #print(rhs)
-        #print(self.f(xk-d1),'',f,'',gab[0])
-        #input()
-        #sol = np.linalg.pinv(A).dot(rhs)
-        #print(sol)
-        try:
-            #sol = np.linalg.lstsq(A, rhs, rcond=None)[0]
-            sol = np.linalg.solve(A, rhs)
-        except np.linalg.LinAlgError:
-            sol = np.linalg.lstsq(A, rhs, rcond=None)[0]
-        if False:
-            print(A.dot(sol))
-            print(rhs)
-            #input()
-        ba = sol[0,0]
-        bc = sol[1,0]
-        bb = sol[2,0]
+		# # bc1 = 2*(gab[1]+fB-fA)
+		# # ba1 = 2/(alpha**2)*(fD-alpha*gab[0]-fA)
+		# # bb1 = (fC-fA-gab[0]*alpha-gab[1]*beta-0.5*alpha*alpha*ba1-0.5*beta*beta*bc1)/(alpha*beta)
 
-        # bc1 = 2*(gab[1]+fB-fA)
-        # ba1 = 2/(alpha**2)*(fD-alpha*gab[0]-fA)
-        # bb1 = (fC-fA-gab[0]*alpha-gab[1]*beta-0.5*alpha*alpha*ba1-0.5*beta*beta*bc1)/(alpha*beta)
+		# # sol[0,0] = ba1
+		# # sol[1,0] = bc1
+		# # sol[2,0] = bb1
+        # if False:
+            # print(A.dot(sol))
+            # print(rhs)
 
-        # sol[0,0] = ba1
-        # sol[1,0] = bc1
-        # sol[2,0] = bb1
-        if False:
-            print(A.dot(sol))
-            print(rhs)
-
+        # if False: #bc != bc1 or ba != ba1 or bb != bb1:
+            # print(bc,' ',bc1)
+            # print(ba, ' ', ba1)
+            # print(bb, ' ', bb1)
+            # input()
+				
+        delta1=1.e-3
+        delta2=1.e-3		
+        f1=self.f(xk+delta1*d1)
+        f2=self.f(xk+delta2*d2)
+        f3=self.f(xk+delta1*d1+delta2*d2)
+        ba = (2./delta1)*((f1-f)/delta1-gab[0])
+        bc = (2./delta2)*((f2-f)/delta2-gab[1])
+        bb = (1./delta2)*((f3-f)/delta1)-(1./delta2)*((f1-f)/delta1)-(1./delta1)*((f2-f)/delta2)
         if False: #bc != bc1 or ba != ba1 or bb != bb1:
-            print(bc,'',bc1)
-            print(ba, '', ba1)
-            print(bb, '', bb1)
-            input()
-
+            print(bc,' ',bc2)
+            print(ba, ' ', ba2)
+            print(bb, ' ', bb2)
+            input()			
         Bab = np.array([[ba, bb], [bb, bc]])
-        try:
-            EIGV, EIGW = np.linalg.eig(Bab)
-        except np.linalg.LinAlgError:
-            print(A)
-            print(rhs)
-            print(Bab)
-            EIGV = np.zeros(2)
-            input()
 
-        if min(EIGV) < 0:
+        #try:
+        #    EIGV, EIGW = np.linalg.eig(Bab)
+        #except np.linalg.LinAlgError:
+        #    print(A)
+        #    print(rhs)
+        #    print(Bab)
+        #    EIGV = np.zeros(2)
+        #    input()
+
+        #if min(EIGV) < 0:
             #print(EIGV)
-            self.nnegeig += 1
+        #    self.nnegeig += 1
             #input()
         #Bab = np.array([[ba1, bb1], [bb1, bc1]])
 
@@ -1055,6 +1072,8 @@ def make_random_psd_matrix(size, ncond=None, eigenvalues=None):
 #solvers = ['Momentum-plane-deriv-free', 'QPS', 'QPS-roma']
 #solvers = ['QPS', 'QPS-roma', 'CGlike','scipy_lbfgs']
 solvers = ['QPS', 'QPS-approx', 'QPS-roma-box', 'scipy_lbfgs']
+solvers = ['scipy_cg']
+solvers = ['QPS', 'QPS-approx', 'QPS-matteo-box', 'QPS-roma-box', 'scipy_lbfgs', 'scipy_cg']
 
 eps_grad = 1e-3
 
@@ -1071,58 +1090,44 @@ problems = ['GENROSE', 'ARWHEAD', 'BROYDN7D', 'CRAGGLVY', 'DIXMAANA', 'DIXMAANB'
             'LIARWHD', 'MOREBV', 'NCB20', 'NONCVXU2', 'NONCVXUN', 'NONDIA', 'NONDQUAR', 'POWELLSG',
             'POWER', 'SCHMVETT', 'SROSENBR', 'TOINTGSS', 'TQUARTIC', 'VAREIGVL', 'WOODS']
 
-problems = ['GENROSE', 'ARWHEAD', 'BROYDN7D', 'CRAGGLVY', 'DIXMAANA1', 'DIXMAANB', 'DIXMAANC', 'DIXMAAND',
-            'DIXMAANE1', 'DIXMAANF', 'DIXMAANG', 'DIXMAANH', 'DIXMAANI1', 'DIXMAANJ', 'DIXMAANK', 'DIXMAANL', 'DIXMAANM1',
+problems = ['GENROSE', 'ARWHEAD', 'BROYDN7D', 'CRAGGLVY', 'DIXMAANA1', 'DIXMAANB', 'DIXMAANC', 'DIXMAAND', 'DIXMAANE1', 'DIXMAANF', 'DIXMAANG', 'DIXMAANH', 'DIXMAANI1', 'DIXMAANJ', 'DIXMAANK', 'DIXMAANL', 'DIXMAANM1',
             'DIXMAANN', 'DIXMAANO', 'DIXMAANP', 'EDENSCH', 'ENGVAL1', 'FLETCBV3', "FLETCHCR", 'FMINSURF',
             'LIARWHD', 'MOREBV', 'NCB20', 'NONCVXU2', 'NONCVXUN', 'NONDIA', 'NONDQUAR', 'POWELLSG',
             'POWER', 'SCHMVETT', 'SROSENBR', 'TOINTGSS', 'TQUARTIC', 'VAREIGVL', 'WOODS']
 
 #problems = ['ARWHEAD']
 
+
 problems = ['ARWHEAD','BDQRTIC','BROYDN7D','BRYBND','CHAINWOO','CLPLATEB','CLPLATEC','COSINE','CRAGGLVY','CURLY10',
-'CURLY20','DIXMAANA','DIXMAANB','DIXMAANC','DIXMAAND','DIXMAANE','DIXMAANF','DIXMAANG','DIXMAANH','DIXMAANI','DIXMAANJ',
-'DIXMAANK','DIXMAANL','DIXMAANM','DIXMAANN','DIXMAANO','DIXMAANP','DIXON3DQ','DQDRTIC','DQRTIC','EDENSCH','ENGVAL1',
-'EXTROSNB','FLETCBV3','FLETCHCR','FMINSRF2','FMINSURF','FREUROTH','GENROSE','LIARWHD','LMINSURF','MANCINO','MOREBV',
-'NCB20','NCB20B','NLMSURF','NONCVXU2','NONCVXUN','NONDIA','NONDQUAR','ODC','PENALTY1','PENALTY2','PENALTY3','POWELLSG',
-'POWER','QUARTC','RAYBENDL','RAYBENDS','SCHMVETT','SCOSINE','SENSORS','SPARSINE','SPARSQUR','SROSENBR','SSC','TESTQUAD',
-'TOINTGSS','TQUARTIC','TRIDIA','VARDIM','VAREIGVL','WOODS']
+            'CURLY20','DIXMAANA1','DIXMAANB','DIXMAANC','DIXMAAND','DIXMAANE1','DIXMAANF','DIXMAANG','DIXMAANH','DIXMAANI1','DIXMAANJ',
+            'DIXMAANK','DIXMAANL','DIXMAANM1','DIXMAANN','DIXMAANO','DIXMAANP','DIXON3DQ','DQDRTIC','DQRTIC','EDENSCH','ENGVAL1',
+            'EXTROSNB','FLETCBV3','FLETCHCR','FMINSRF2','FMINSURF','FREUROTH','GENROSE','LIARWHD','LMINSURF','MANCINO','MOREBV',
+            'NCB20','NCB20B','NLMSURF','NONCVXU2','NONCVXUN','NONDIA','NONDQUAR','ODC','PENALTY1','PENALTY2','PENALTY3','POWELLSG',
+            'POWER','QUARTC','RAYBENDL','RAYBENDS','SCHMVETT','SCOSINE','SENSORS','SPARSINE','SPARSQUR','SROSENBR','SSC','TESTQUAD',
+            'TOINTGSS','TQUARTIC','TRIDIA','VARDIM','VAREIGVL','WOODS']
 
-
-problems = ['10FOLDTR','ARGLINA','ARGLINB','ARGLINC','ARGTRIGLS','BA-L16LS','BA-L21LS','BA-L49LS','BA-L52LS','BA-L73LS','BDEXP','BOX','BOXPOWER',
-'BRATU1D','BROWNAL','BROWNALE','BROYDN3DLS','BROYDNBDLS','CHEBYQAD','CHEBYQADNE','CHNROSNB','CHNRSNBM',
-'CLPLATEA','CURLY30','CVXBQP1','CYCLIC3','CYCLIC3LS','CYCLOOCFLS','CYCLOOCTLS','DEGDIAG','DEGTRID',
-'ARWHEAD',
-'BDQRTIC','BROYDN7D',
-'BRYBND','CHAINWOO','CLPLATEB','CLPLATEC',
-'COSINE','CRAGGLVY','CURLY10','CURLY20',
-'DEGTRID2','DIAGIQB','DIAGIQE','DIAGIQT','DIAGNQB','DIAGNQE','DIAGNQT','DIAGPQB','DIAGPQE',
-'DIAGPQT','DIXMAANA','DIXMAANB','DIXMAANC','DIXMAAND','DIXMAANE','DIXMAANF','DIXMAANG','DIXMAANH','DIXMAANI',
-'DIXMAANJ','DIXMAANK','DIXMAANL','DIXMAANM','DIXMAANN','DIXMAANO','DIXMAANP','DIXON3DQ','DQDRTIC','DQRTIC',
-'EDENSCH','EIGENALS','EIGENBLS','EIGENCLS','ENGVAL1','ERRINROS','ERRINRSM','EXTROSNB','FLETBV3M','FLETCBV2',
-'FLETCBV3','FLETCHBV','FLETCHCR','FMINSRF2','FMINSURF','FREUROTH','GENHUMPS','GENROSE','GENROSEB','GENROSEBNE',
-'GRIDGENA','HILBERTA','HILBERTB','INDEF','INDEFM','INTEQNELS','JNLBRNG1','JNLBRNG2','JNLBRNGA','JNLBRNGB',
-'KSSLS','LIARWHD','LINVERSE','LINVERSENE','LMINSURF','LUKSAN11LS','LUKSAN12LS','LUKSAN13LS','LUKSAN14LS',
-'LUKSAN15LS','LUKSAN16LS','LUKSAN17LS','LUKSAN21LS','LUKSAN22LS','MANCINO','MCCORMCK','MODBEALE','MOREBV',
-'NCB20','NCB20B','NCVXBQP1','NCVXBQP2','NCVXBQP3','NLMSURF','NOBNDTOR','NONCVXU2','NONCVXUN','NONDIA','NONDQUAR',
-'NONMSQRT','NONSCOMP','NONSCOMPNE','OBSTCLAE','OBSTCLAL','OBSTCLBL','OBSTCLBM','OBSTCLBU','ODC','ODNAMUR','OSCIGRAD',
-'OSCIPATH','PENALTY1','PENALTY2','PENALTY3','PENTDI','POWELLBC','POWELLSG','POWER','POWERSUM','PRICE3','PROBPENL',
-'QING','QRTQUAD','QUARTC','RAYBENDL','RAYBENDS','S368','SBRYBND','SCHMVETT','SCOSINE','SCURLY10','SCURLY20','SCURLY30',
-'SENSORS','SINEALI','SINQUAD','SPARSINE','SPARSQUR','SPECAN','SPIN2LS','SPINLS','SROSENBR','SSBRYBND',
-'SSC','SSCOSINE','STRTCHDV','TESTQUAD','TOINTGSS','TORSION1','TORSION2','TORSION3','TORSION4','TORSION5','TORSION6',
-'TORSIONA','TORSIONB','TORSIONC','TORSIOND','TORSIONE','TORSIONF','TQUARTIC','TRIDIA','TRIGON1','TRIGON2',
-'VANDANMSLS','VARDIM','VAREIGVL','WATSON','WOODS']
-
-#problems = ['COSINE']
-
-res_tutti = []
-for p in problems:
-    #print('{}'.format(p))
-    P = Problem(p)
-    print('{} {} {}'.format(P.name,P.n,P.m))
-    res_tutti.append([P.name, P.n, P.m])
-table = tabulate(res_tutti, headers=['Problem','n', 'm'], tablefmt = 'orgtbl')
-print(table)
-input()
+#'BA-L16LS','BA-L21LS','BA-L49LS','BA-L52LS','BA-L73LS',
+            
+problems = ['10FOLDTR','ARGLINA','ARGLINB','ARGLINC','ARGTRIGLS','BDEXP','BOX','BOXPOWER','BRATU1D','BROWNAL','BROWNALE','BROYDN3DLS','BROYDNBDLS','CHEBYQAD',
+            'CHEBYQADNE','CHNROSNB','CHNRSNBM','CLPLATEA','CURLY30','CVXBQP1','CYCLIC3','CYCLIC3LS','CYCLOOCFLS',
+            'CYCLOOCTLS','DEGDIAG','DEGTRID','ARWHEAD','BDQRTIC','BROYDN7D','BRYBND','CHAINWOO','CLPLATEB','CLPLATEC',
+            'COSINE','CRAGGLVY','CURLY10','CURLY20','DEGTRID2','DIAGIQB','DIAGIQE','DIAGIQT','DIAGNQB','DIAGNQE',
+            'DIAGNQT','DIAGPQB','DIAGPQE','DIAGPQT','DIXMAANA','DIXMAANB','DIXMAANC','DIXMAAND','DIXMAANE','DIXMAANF',
+            'DIXMAANG','DIXMAANH','DIXMAANI','DIXMAANJ','DIXMAANK','DIXMAANL','DIXMAANM','DIXMAANN','DIXMAANO','DIXMAANP',
+            'DIXON3DQ','DQDRTIC','DQRTIC','EDENSCH','EIGENALS','EIGENBLS','EIGENCLS','ENGVAL1','ERRINROS','ERRINRSM',
+            'EXTROSNB','FLETBV3M','FLETCBV2',
+            'FLETCBV3','FLETCHBV','FLETCHCR','FMINSRF2','FMINSURF','FREUROTH','GENHUMPS','GENROSE','GENROSEB','GENROSEBNE',
+            'GRIDGENA','HILBERTA','HILBERTB','INDEF','INDEFM','INTEQNELS','JNLBRNG1','JNLBRNG2','JNLBRNGA','JNLBRNGB',
+            'KSSLS','LIARWHD','LINVERSE','LINVERSENE','LMINSURF','LUKSAN11LS','LUKSAN12LS','LUKSAN13LS','LUKSAN14LS',
+            'LUKSAN15LS','LUKSAN16LS','LUKSAN17LS','LUKSAN21LS','LUKSAN22LS','MANCINO','MCCORMCK','MODBEALE','MOREBV',
+            'NCB20','NCB20B','NCVXBQP1','NCVXBQP2','NCVXBQP3','NLMSURF','NOBNDTOR','NONCVXU2','NONCVXUN','NONDIA','NONDQUAR',
+            'NONMSQRT','NONSCOMP','NONSCOMPNE','OBSTCLAE','OBSTCLAL','OBSTCLBL','OBSTCLBM','OBSTCLBU','ODC','ODNAMUR','OSCIGRAD',
+            'OSCIPATH','PENALTY1','PENALTY2','PENALTY3','PENTDI','POWELLBC','POWELLSG','POWER','POWERSUM','PRICE3','PROBPENL',
+            'QING','QRTQUAD','QUARTC','RAYBENDL','RAYBENDS','S368','SBRYBND','SCHMVETT','SCOSINE','SCURLY10','SCURLY20','SCURLY30',
+            'SENSORS','SINEALI','SINQUAD','SPARSINE','SPARSQUR','SPECAN','SPIN2LS','SPINLS','SROSENBR','SSBRYBND',
+            'SSC','SSCOSINE','STRTCHDV','TESTQUAD','TOINTGSS','TORSION1','TORSION2','TORSION3','TORSION4','TORSION5','TORSION6',
+            'TORSIONA','TORSIONB','TORSIONC','TORSIOND','TORSIONE','TORSIONF','TQUARTIC','TRIDIA','TRIGON1','TRIGON2',
+            'VANDANMSLS','VARDIM','VAREIGVL','WATSON','WOODS']
 
 res_tutti = []
 for p in problems:
@@ -1135,6 +1140,8 @@ for p in problems:
     for i,r in enumerate(res):
         res_tutti.append(r)
         res_parz.append(r)
+    r=["--", "--", "--", "--", "--", "--", "--", "--", "--", "--", "--", "--"]
+    res_tutti.append(r)
     print(tabulate(res_parz, headers=['Algorithm', 'prob', 'n', 't', 'n_it', 'f_opt',
                                'g_norm', 'fevals', 'gevals', 'nfails', 'nnegeig', 'cosmax'], tablefmt='orgtbl')
           )
@@ -1142,7 +1149,9 @@ for p in problems:
 table = tabulate(res_tutti, headers=['Algorithm','prob', 'n', 't', 'n_it', 'f_opt',
     'g_norm', 'fevals', 'gevals', 'nfails', 'nnegeig', 'cosmax'], tablefmt = 'orgtbl')
 print(table)
-
+fr=open("risultati.txt","w")
+print(table,file=fr)
+fr.close()
 table = tabulate(res_tutti, headers=['Algorithm','prob', 'n', 't', 'n_it', 'f_opt',
     'g_norm', 'fevals', 'gevals', 'nfails', 'nnegeig', 'cosmax'], tablefmt = 'latex')
 print(table)
