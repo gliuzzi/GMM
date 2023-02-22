@@ -1,7 +1,9 @@
 clear all
 close all
 
-T = readtable("risultati_2023-02-17.txt","delimiter",'|');
+%T = readtable("risultati_2023-02-17.txt","delimiter",'|');
+%T = readtable("risultati_2023-02-20.txt","delimiter",'|');
+T = readtable("risultati_2023-02-20_fg2.txt","delimiter",'|');
 T = T(1:1364,:);
 %%%
 % le colonne di T sono le seguenti:
@@ -56,6 +58,7 @@ end
 
 Htime = zeros(np,ns);
 Hiter = zeros(np,ns);
+Hfval = zeros(np,ns);
 
 ip = 1;
 is = 1;
@@ -67,6 +70,7 @@ for row = 1:rows
     end
     ip = find(ismember(P,problem));
     is = find(ismember(S,solver));
+    Hfval(ip,is) = T.Var7(row);
     if T.Var8(row) <= 1.e-3
         Htime(ip,is) = T.Var5(row);
         Hiter(ip,is) = T.Var6(row);
@@ -74,7 +78,13 @@ for row = 1:rows
         Htime(ip,is) = nan;
         Hiter(ip,is) = nan;
     end
-        
+end
+
+I = [];
+for ip = 1:np
+    if max(Hfval(ip,:)) - min(Hfval(ip,:)) < 1.e-3
+        I = [I ip];
+    end
 end
 
 

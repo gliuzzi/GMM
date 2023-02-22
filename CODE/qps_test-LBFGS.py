@@ -2,6 +2,7 @@ import numpy as np
 import pycutest
 from scipy.optimize import minimize, approx_fprime, fmin_bfgs, fmin_l_bfgs_b
 from time import time, sleep
+from dfbox import der_free_method
 from scipy.linalg import hilbert
 from tabulate import tabulate
 import matplotlib.pyplot as plt
@@ -178,6 +179,10 @@ class Solver:
             sol, info = self.solveConjGrad()
         elif self.method == 'Quasi-Newton':
             sol, info = self.solveQuasiNewton()
+        elif self.method == 'DFBOX':
+            DFBOX = der_free_method(self.f,-np.inf*np.ones(self.problem.n),np.inf*np.ones(self.problem.n),maxfev=25000,tol=self.grad_tol)
+            sol, info = DFBOX.sd_box(self.problem.get_x0())
+
         elif self.method == 'scipy_bfgs':
             bfgs = minimize(self.f, self.problem.get_x0(), jac=self.g, method="BFGS", options={"disp": False, "gtol": self.grad_tol, "maxiter": self.max_iters, 'norm': self.gtol_ord})
             info = {"iters": bfgs.nit, "f": bfgs.fun, "g_norm": np.linalg.norm(bfgs.jac, self.gtol_ord)}
@@ -293,6 +298,8 @@ class Solver:
         return best
 
     def bidimensional_search_box(self, x, d1, d2, alpha0, beta0=0, multistart=0, deriv_free=False, maxfev=10):
+        nrd1 = np.linalg.norm(d1)
+        nrd2 = np.linalg.norm(d2)
         def f2(ab):
             return self.f(x + ab[0] * d1 + ab[1] * d2)
 
@@ -302,15 +309,21 @@ class Solver:
 
         def fg2(ab):
             g = self.g(x + ab[0] * d1 + ab[1] * d2)
-            return self.f(x + ab[0] * d1 + ab[1] * d2), np.array(np.dot(g, d1), np.dot(g, d2))
+            return self.f(x + ab[0] * d1 + ab[1] * d2), np.array([np.dot(g, d1), np.dot(g, d2)])
 
+        def fg2_approx(ab):
+            fk = self.f(x + ab[0] * d1 + ab[1] * d2)
+            f1 = self.f(x + ab[0] * d1 + ab[1] * d2 + 1.e-5*d1/nrd1)
+            f2 = self.f(x + ab[0] * d1 + ab[1] * d2 + 1.e-5*d2/nrd2)
+            gk = np.array([(f1 - fk), (f2 - fk)]) / 1.e-5
+            return fk, gk
         def inner_BB(ab):
             BB = nmgrad2(2, ab, 1.e-5, 5, 0, fg2)
             x, f, ng, ifail, x_current, f_current, g_current = BB.minimize()
             return x, f
         def inner_lbfgsb(ab):
-            return minimize(f2, ab, jac=g2, method="L-BFGS-B",
-                             options={"iprint": -1, "maxcor": 5, "gtol": self.grad_tol, "ftol": 1e-30,"maxiter": 10})
+            return minimize(fg2, ab, jac=True, method="L-BFGS-B",
+                             options={"iprint": -1, "maxcor": 5, "gtol": self.grad_tol, "ftol": 1e-30,"maxiter": 5})
             #return minimize(f2, ab, jac=g2, bounds=[[ab[0]-10, ab[0]+10], [ab[1]-10, ab[1]+10]], method="L-BFGS-B",
             #                 options={"iprint": -1, "maxcor": 5, "gtol": self.grad_tol, "ftol": 1e-30,"maxiter": 10})
             #return minimize(f2, ab, jac=g2, bounds=[[0,10], [0,+10]], method="L-BFGS-B",
@@ -337,7 +350,7 @@ class Solver:
                 best = solution.x
                 best_f = solution.fun
             multistart -= 1
-        return best
+        return best, best_f
 
     def solvePlaneSearch_roma_box(self, iterative=False, prova=False):
         xk = self.problem.get_x0()
@@ -384,14 +397,14 @@ class Solver:
                     #ab[1]=0.
                     ab[0]=np.maximum(0.,ab[0])
                     #print('alfa=',ab[0],'     beta=',ab[1] )
-                    #fExp = self.f(xk - ab[0] * g + ab[1] * (xk - xk_1))
+                    fExp = self.f(xk - ab[0] * g + ab[1] * (xk - xk_1))
                     #print('f=',f,'   fnew=',fExp)
-                    if True:
-                    #if fExp > f:
+                    #if True:
+                    if fExp > f:
                         #ab[0]=0.
                         #ab[1]=0.
-                        ab = self.bidimensional_search_box(xk, -g, xk - xk_1, alpha0=ab[0], beta0=ab[1], deriv_free=True, maxfev=5)
-                        fExp = self.f(xk - ab[0] * g + ab[1] * (xk - xk_1))
+                        ab, fExp = self.bidimensional_search_box(xk, -g, xk - xk_1, alpha0=ab[0], beta0=ab[1], deriv_free=True, maxfev=5)
+                        #fExp = self.f(xk - ab[0] * g + ab[1] * (xk - xk_1))
                     #ab = self.bidimensional_search_box(xk, -g, xk - xk_1, alpha0=ab[0], beta0=ab[1], deriv_free=True, maxfev=10)
                     #fExp = self.f(xk - ab[0] * g + ab[1] * (xk - xk_1))
                     #print('alfa=',ab[0],'     beta=',ab[1] )
@@ -1060,13 +1073,6 @@ def make_random_psd_matrix(size, ncond=None, eigenvalues=None):
     Y = np.identity(size) - 2/(np.linalg.norm(y)**2)*(y@y.T)
     return Y@D@Y
 
-
-
-
-
-
-
-
 #solvers = ['Armijo', 'Extrapolation', 'Barzilai', 'Momentum', 'Momentum-plane-deriv-free',
 #           'Momentum-plane', 'RandomMomentum',  'Momentum-plane-multistart', 'QPS', 'QPS-iterative',  'scipy_cg',  'scipy_lbfgs']
 #solvers = ['Momentum-plane-deriv-free', 'QPS', 'QPS-roma']
@@ -1074,6 +1080,7 @@ def make_random_psd_matrix(size, ncond=None, eigenvalues=None):
 solvers = ['QPS', 'QPS-approx', 'QPS-roma-box', 'scipy_lbfgs']
 solvers = ['scipy_cg']
 solvers = ['QPS', 'QPS-approx', 'QPS-matteo-box', 'QPS-roma-box', 'scipy_lbfgs', 'scipy_cg']
+solvers = ['DFBOX']
 
 eps_grad = 1e-3
 
@@ -1128,6 +1135,12 @@ problems = ['10FOLDTR','ARGLINA','ARGLINB','ARGLINC','ARGTRIGLS','BDEXP','BOX','
             'SSC','SSCOSINE','STRTCHDV','TESTQUAD','TOINTGSS','TORSION1','TORSION2','TORSION3','TORSION4','TORSION5','TORSION6',
             'TORSIONA','TORSIONB','TORSIONC','TORSIOND','TORSIONE','TORSIONF','TQUARTIC','TRIDIA','TRIGON1','TRIGON2',
             'VANDANMSLS','VARDIM','VAREIGVL','WATSON','WOODS']
+
+problems = ['ARWHEAD']
+problems = ['ARGLINA_10']
+problems = ['GENROSE100']
+
+#problems = ['BA-L16LS','BA-L21LS','BA-L49LS','BA-L52LS','BA-L73LS']
 
 res_tutti = []
 for p in problems:
