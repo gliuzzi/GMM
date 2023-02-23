@@ -1,0 +1,280 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          PENALTY3
+
+*   Problem :
+*   *********
+
+*   A penalty problem by Gill, Murray and Pitfield.
+*   It has a dense Hessian matrix.
+
+*   Source:  problem 114 (p. 81) in
+*   A.R. Buckley,
+*   "Test functions for unconstrained minimization",
+*   TR 1989CS-3, Mathematics, statistics and computing centre,
+*   Dalhousie University, Halifax (CDN), 1989.
+
+*   SIF input: Nick Gould, Dec 1990.
+
+*   classification OUR2-AY-V-0
+
+*   N is the number of variables
+
+ IE N/2                 25             $-PARAMETER n = 50   original value
+*IE N/2                 50             $-PARAMETER n = 100
+*IE N/2                 100            $-PARAMETER n = 200
+
+*   Obtain N from N/2
+
+ IM N         N/2       2
+
+*   Define useful parameters
+
+ IE 1                   1
+ IE 2                   2
+ IA N-2       N         -2
+ IA N-1       N         -1
+ IA N-2       N         -2
+ RI RN        N
+ RE A                   0.001
+ RM MINUSA    A         -1.0
+
+VARIABLES
+
+ DO I         1                        N
+ X  X(I)
+ ND
+
+GROUPS
+
+ N  A
+ N  REXP
+ N  SEXP
+ N  RS
+ N  T**2
+ N  U
+
+CONSTANTS
+
+ Z  PENALTY3  A                        MINUSA
+
+BOUNDS
+
+ FR PENALTY3  'DEFAULT'
+
+START POINT
+
+*   Starting from ( 1, -1, 1, -1, ...., 1, -1 )
+
+ DO I         1                        N
+ DI I         2
+ IA IP1       I         1
+ X  PENALTY3  X(I)      1.0
+ X  PENALTY3  X(IP1)    -1.0
+ ND
+
+ELEMENT TYPE
+
+*   REXP = A*(U1 - 1)**2 * EXP( U3 ), where
+*     U1 = XI + 2 XIP1 + 10 XIP2 and U3 = XN
+
+ EV REXP      XI                       XIP1
+ EV REXP      XIP2                     XN
+ IV REXP      U1                       U3
+ EP REXP      A
+
+*   SEXP = A*(U2 - 3)**2 * EXP( U3 ), where
+*     U2 = 2 XJ + XJP1 and U3 = XNM1
+
+ EV SEXP      XJ                       XJP1
+ EV SEXP      XNM1
+ IV SEXP      U2                       U3
+ EP SEXP      A
+
+*   RS = A*(U1 - 1)**2 * (U2 - 3)**2, where
+*   U1 = XI + 2 XIP1 + 10 XIP2 and U2 = 2 XJ + XJP1
+
+ EV RS        XI                       XIP1
+ EV RS        XIP2                     XJ
+ EV RS        XJP1
+ IV RS        U1                       U2
+ EP RS        A
+
+*   T = (XI**2 - RN) * (XJ**2 - RN)
+
+ EV T         XI                       XJ
+ EP T         RN
+
+*   U = (XI - 1)**2
+
+ EV U         XI
+
+ELEMENT USES
+
+ DO I         1                        N-2
+ IA I+1       I         1
+ IA I+2       I         2
+ XT REXP(I)   REXP
+ ZV REXP(I)   XI                       X(I)
+ ZV REXP(I)   XIP1                     X(I+1)
+ ZV REXP(I)   XIP2                     X(I+2)
+ ZV REXP(I)   XN                       X(N)
+ ZP REXP(I)   A                        A
+ ND
+
+ DO J         1                        N-2
+ IA J+1       J         1
+ XT SEXP(J)   SEXP
+ ZV SEXP(J)   XJ                       X(J)
+ ZV SEXP(J)   XJP1                     X(J+1)
+ ZV SEXP(J)   XNM1                     X(N-1)
+ ZP SEXP(J)   A                        A
+ ND
+
+ DO I         1                        N-2
+ IA I+1       I         1
+ IA I+2       I         2
+ DO J         1                        N-2
+ IA J+1       J         1
+ XT RS(I,J)   RS
+ ZV RS(I,J)   XI                       X(I)
+ ZV RS(I,J)   XIP1                     X(I+1)
+ ZV RS(I,J)   XIP2                     X(I+2)
+ ZV RS(I,J)   XJ                       X(J)
+ ZV RS(I,J)   XJP1                     X(J+1)
+ ZP RS(I,J)   A                        A
+ ND
+
+ DO I         1                        N
+ DO J         1                        N
+ XT T(I,J)    T
+ ZV T(I,J)    XI                       X(I)
+ ZV T(I,J)    XJ                       X(J)
+ ZP T(I,J)    RN                       RN
+ ND
+
+ DO I         1                        N/2
+ XT U(I)      U
+ ZV U(I)      XI                       X(I)
+ ND
+
+GROUP USES
+
+ DO I         1                        N-2
+ XE REXP      REXP(I)
+ XE SEXP      SEXP(I)
+ DO J         1                        N-2
+ XE RS        RS(I,J)
+ ND
+
+ DO I         1                        N
+ DO J         1                        N
+ XE T**2      T(I,J)
+ ND
+
+ DO I         1                        N/2
+ XE U         U(I)
+ ND
+
+OBJECT BOUND
+
+ LO PENALTY3            0.0
+
+*   Solution
+
+*LO SOLTN               0.001
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      PENALTY3
+
+TEMPORARIES
+ R  U1M1
+ R  EXPU3
+ M  EXP
+ R  F
+ R  GU1
+ R  U2M3
+ R  GU2
+ R  XI2MRN
+ R  XJ2MRN
+ R  XIM1
+
+INDIVIDUALS
+
+*   REXP elements
+
+ T  REXP
+ R  U1        XI        1.0            XIP1       2.0
+ R  U1        XIP2      10.0
+ R  U3        XN        1.0
+ A  U1M1                U1 - 1.0D+0
+ A  EXPU3               EXP( U3 )
+ A  F                   A * U1M1 * U1M1 * EXPU3
+ A  GU1                 2.0D+0 * A * U1M1 * EXPU3
+ F                      F
+ G  U1                  GU1
+ G  U3                  F
+ H  U1        U1        2.0D+0 * A * EXPU3
+ H  U1        U3        GU1
+ H  U3        U3        F
+
+*   SEXP elements
+
+ T  SEXP
+ R  U2        XJ        2.0            XJP1       1.0
+ R  U3        XNM1      1.0
+ A  U2M3                U2 - 3.0D+0
+ A  EXPU3               EXP( U3 )
+ A  F                   A * U2M3 * U2M3 * EXPU3
+ A  GU2                 2.0D+0 * A * U2M3 * EXPU3
+ F                      F
+ G  U2                  GU2
+ G  U3                  F
+ H  U2        U2        2.0D+0 * A * EXPU3
+ H  U2        U3        GU2
+ H  U3        U3        F
+
+*   RS element
+
+ T  RS
+ R  U1        XI        1.0            XIP1       2.0
+ R  U1        XIP2      10.0
+ R  U2        XJ        2.0            XJP1       1.0
+ A  U1M1                U1 - 1.0D+0
+ A  U2M3                U2 - 3.0D+0
+ F                      A * U2M3 * U2M3 * U1M1 * U1M1
+ G  U1                  2.0D+0 * A * U2M3 * U2M3 * U1M1
+ G  U2                  2.0D+0 * A * U1M1 * U1M1 * U2M3
+ H  U1        U1        2.0D+0 * A * U2M3 * U2M3
+ H  U1        U2        4.0D+0 * A * U1M1 * U2M3
+ H  U2        U2        2.0D+0 * A * U1M1 * U1M1
+
+*   T element
+
+ T  T
+ A  XI2MRN              XI*XI - RN
+ A  XJ2MRN              XJ*XJ - RN
+ F                      XI2MRN * XJ2MRN
+ G  XI                  2.0D+0 * XI * XJ2MRN
+ G  XJ                  2.0D+0 * XJ * XI2MRN
+ H  XI        XI        2.0D+0 * XJ2MRN
+ H  XI        XJ        4.0D+0 * XI * XJ
+ H  XJ        XJ        2.0D+0 * XI2MRN
+
+*   U element
+
+ T  U
+ A  XIM1                XI - 1.0D+0
+ F                      XIM1 * XIM1
+ G  XI                  XIM1 + XIM1
+ H  XI        XI        2.0D+0
+
+ENDATA

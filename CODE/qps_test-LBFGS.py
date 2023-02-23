@@ -8,24 +8,46 @@ from tabulate import tabulate
 import matplotlib.pyplot as plt
 
 class Problem:
-    def __init__(self, name, n=None):
+    def __init__(self, name, n=None, approxg=False):
         if n:
             self.__p = pycutest.import_problem(name, sifParams={'N':n})
         else:
             self.__p = pycutest.import_problem(name)
         self.n = self.__p.n
+        self.m = self.__p.m
         self.x0 = self.__p.x0
         self.name = self.__p.name
+        self.approxg = approxg
 
     def f(self,x):
         return self.__p.obj(x)
 
     def f_g(self, x):
-        return self.__p.obj(x, gradient=True)
+    	if self.approxg:
+    		f = self.__p.obj(x)
+    		return f,self.gnum(x,f)
+
+    	else:
+	        return self.__p.obj(x, gradient=True)
 
     def g(self,x):
-        _, gr = self.__p.obj(x,gradient=True)
-        return gr
+	    if self.approxg:
+		    f = self.__p.obj(x)
+		    gr = self.gnum(x,f)
+	    else:
+		    _, gr = self.__p.obj(x,gradient=True)
+	    return gr
+
+    def gnum(self,x,f):
+        step = 1.e-3
+        xp = np.copy(x)
+        g = np.zeros(self.n)
+        for i in range(self.n):
+            xp[i] = x[i] + step
+            fp = self.f(xp)
+            g[i] = (fp - f)/step
+            xp[i] = x[i]
+        return g
 
     def get_x0(self):
         return np.copy(self.x0)
@@ -333,13 +355,14 @@ class Solver:
             if not deriv_free:
                 return minimize(f2, ab, jac=g2, method="CG", options={"disp": False, "gtol": 1e-3, "maxiter": 10})
             else:
-                return minimize(f2, ab, method="Nelder-Mead", bounds=[[ab[0]-10, ab[0]+10], [ab[1]-10, ab[1]+10]],
-                                options={"disp": False, "maxfev": maxfev})
+                return minimize(f2, ab, method="Nelder-Mead", options={"disp": False, "maxfev": maxfev})
+                #return minimize(f2, ab, method="Nelder-Mead", bounds=[[ab[0]-10, ab[0]+10], [ab[1]-10, ab[1]+10]],
+                #                options={"disp": False, "maxfev": maxfev})
 
         #        alpha0=0.5
         #        beta0=0.
-        #solution = inner_solve([alpha0, beta0])
-        solution = inner_lbfgsb([alpha0,beta0])
+        solution = inner_solve([alpha0, beta0])
+        #solution = inner_lbfgsb([alpha0,beta0])
         best, best_f = solution.x, solution.fun
         # best, best_f = inner_BB(np.array([alpha0, beta0]))
         while multistart > 0:
@@ -403,7 +426,7 @@ class Solver:
                     if fExp > f:
                         #ab[0]=0.
                         #ab[1]=0.
-                        ab, fExp = self.bidimensional_search_box(xk, -g, xk - xk_1, alpha0=ab[0], beta0=ab[1], deriv_free=True, maxfev=5)
+                        ab, fExp = self.bidimensional_search_box(xk, -g, xk - xk_1, alpha0=ab[0], beta0=ab[1], deriv_free=True, maxfev=20)
                         #fExp = self.f(xk - ab[0] * g + ab[1] * (xk - xk_1))
                     #ab = self.bidimensional_search_box(xk, -g, xk - xk_1, alpha0=ab[0], beta0=ab[1], deriv_free=True, maxfev=10)
                     #fExp = self.f(xk - ab[0] * g + ab[1] * (xk - xk_1))
@@ -1081,6 +1104,7 @@ solvers = ['QPS', 'QPS-approx', 'QPS-roma-box', 'scipy_lbfgs']
 solvers = ['scipy_cg']
 solvers = ['QPS', 'QPS-approx', 'QPS-matteo-box', 'QPS-roma-box', 'scipy_lbfgs', 'scipy_cg']
 solvers = ['DFBOX']
+solvers = ['QPS', 'QPS-matteo-box', 'scipy_lbfgs', 'scipy_cg']
 
 eps_grad = 1e-3
 
@@ -1136,16 +1160,58 @@ problems = ['10FOLDTR','ARGLINA','ARGLINB','ARGLINC','ARGTRIGLS','BDEXP','BOX','
             'TORSIONA','TORSIONB','TORSIONC','TORSIOND','TORSIONE','TORSIONF','TQUARTIC','TRIDIA','TRIGON1','TRIGON2',
             'VANDANMSLS','VARDIM','VAREIGVL','WATSON','WOODS']
 
-problems = ['ARWHEAD']
 problems = ['ARGLINA_10']
+problems = ['ARWHEAD']
 problems = ['GENROSE100']
+
+problems = ['AKIVA','ALLINITU','ARGLINA_10','ARGLINA_50','ARGLINB_10','ARGLINB_50',
+            'ARGLINC_10','ARGLINC_50','BARD','BDQRTIC','BEALE','BOX_100','BOX_10','BOX3','BOXPOWER',
+            'BRKMCC','BROWNBS','BROWNDEN','BROYDN7D_10','BROYDN7D_50','BRYBND_100','BRYBND_50','BRYBND',
+            'CHAINWOO_100','CHAINWOO_4','CHNROSNB_25','CHNROSNB_50','CHNROSNB','CHNRSNBM_25','CHNRSNBM_50','CHNRSNBM','CLIFF',
+            'COSINE_10','CRAGGLVY_100','CRAGGLVY_10','CRAGGLVY_50','CRAGGLVY','CUBE','DECONVU','DENSCHNA','DENSCHNB','DENSCHNC',
+            'DENSCHND','DENSCHNE','DENSCHNF','DIXMAANA_90','DIXMAANA','DIXMAANB_90','DIXMAANB','DIXMAANC_90','DIXMAANC','DIXMAAND_90',
+            'DIXMAAND','DIXMAANE_90','DIXMAANE','DIXMAANF_90','DIXMAANF','DIXMAANG_90','DIXMAANG','DIXMAANH_90','DIXMAANH','DIXMAANI_90',
+            'DIXMAANI','DIXMAANJ_90','DIXMAANJ','DIXMAANK_90','DIXMAANK','DIXMAANL_90','DIXMAANL','DIXMAANM_90','DIXMAANM','DIXMAANN_90',
+            'DIXMAANN','DIXMAANO_90','DIXMAANO','DIXMAANP_90','DIXMAANP','DIXON3DQ_100','DIXON3DQ','DJTL','DQDRTIC_100','DQDRTIC_50',
+            'DQDRTIC','DQRTIC_100','DQRTIC_10','DQRTIC_50','EDENSCH','EIGENALS_6','EIGENBLS_6','EIGENCLS_30','ENGVAL1_100','ENGVAL1_50',
+            'ENGVAL1','ENGVAL2','ERRINROS_10','ERRINROS_25','ERRINROS_50','ERRINRSM_10','ERRINRSM_25','ERRINRSM_50','EXPFIT','EXTROSNB_100',
+            'EXTROSNB_10','EXTROSNB','FLETBV3M','FLETCBV2_100','FLETCBV2','FLETCBV3_100','FLETCHBV_100','FLETCHCR','FMINSRF2_16','FMINSRF2_49',
+            'FMINSRF2','FMINSURF_49','FMINSURF_64','FMINSURF','FREUROTH_100','FREUROTH_10','FREUROTH_50','FREUROTH','GENHUMPS_100',
+            'GENHUMPS_10','GENHUMPS_5','GENROSE_10','GENROSE_5','GROWTHLS','GULF','HAIRY','HATFLDD','HATFLDE','HELIX','HIELOW','HILBERTA_10',
+            'HILBERTA_2','HILBERTA_4','HILBERTA_5','HILBERTA_6','HILBERTB_10','HILBERTB_50','HILBERTB','HIMMELBB','HIMMELBF','HIMMELBG',
+            'HIMMELBH','HUMPS','HYDC20LS','INDEF_100','INDEF_10','INDEF_50','INDEFM_100','INDEFM_10','INDEFM_50','JENSMP','KOWOSB',
+            'LIARWHD_100','LIARWHD','LOGHAIRY','MANCINO_100','MANCINO_10','MANCINO_20','MANCINO_30','MANCINO_50','MARATOSB','MEXHAT',
+            'MODBEALE_4','MODBEALE','MOREBV_100','MOREBV_50','MOREBV','MSQRTALS_49','MSQRTALS','MSQRTBLS_49','MSQRTBLS','NCB20B_100',
+            'NCB20B_22','NCB20B_50','NCB20B','NONCVXU2_100','NONCVXU2_10','NONCVXUN_10','NONDIA_100','NONDIA_10','NONDIA_20','NONDIA_30',
+            'NONDIA_50','NONDIA_90','NONDQUAR','OSBORNEA','OSBORNEB','OSCIGRAD_10','OSCIGRAD_15','OSCIGRAD_25','OSCIGRAD_2','OSCIPATH_100',
+            'OSCIPATH_25','OSCIPATH_2','OSCIPATH_5','PALMER1C','PALMER1D','PALMER2C','PALMER3C','PALMER4C','PALMER5C','PALMER6C','PALMER7C',
+            'PALMER8C','PARKCH','PENALTY1_100','PENALTY1_10','PENALTY1_4','PENALTY1_50','PENALTY2_100','PENALTY2_10','PENALTY2_50','PENALTY2',
+            'PENALTY3_100','PENALTY3','POWELLSG_100','POWELLSG_16','POWELLSG_20','POWELLSG_36','POWELLSG_40','POWELLSG_60','POWELLSG_80',
+            'POWELLSG_8','POWELLSG','POWER_100','POWER_20','POWER_30','POWER_50','POWER_75','POWER','QUARTC_100','QUARTC','ROSENBR','S308',
+            'SBRYBND_100','SBRYBND_10','SBRYBND_50','SCHMVETT_100','SCHMVETT_10','SCHMVETT','SCOSINE_100','SCOSINE_10','SCURLY10_100',
+            'SCURLY10_10','SENSORS_100','SENSORS_10','SENSORS_2','SENSORS_3','SINEVAL','SINQUAD_100','SINQUAD_50','SINQUAD','SISSER',
+            'SNAIL','SPARSINE_100','SPARSINE_10','SPARSINE_50','SPARSQUR_100','SPARSQUR_10','SPARSQUR_50','SPMSRTLS','SROSENBR_100',
+            'SROSENBR_50','SROSENBR','SSBRYBND_100','SSBRYBND_10','SSBRYBND_50','SSCOSINE_100','SSCOSINE_10','STRATEC','TOINTGOR','TOINTGSS_100',
+            'TOINTGSS_50','TOINTGSS','TOINTPSP','TOINTQOR','TQUARTIC_100','TQUARTIC_10','TQUARTIC_50','TQUARTIC','TRIDIA_100','TRIDIA_10',
+            'TRIDIA_20','TRIDIA_50','TRIDIA','VARDIM_100','VARDIM_50','VARDIM','VAREIGVL_100','VAREIGVL_10','VAREIGVL','VIBRBEAM',
+            'WATSON_12','WATSON_31','WOODS_100','WOODS_4','ZANGWIL2',]
 
 #problems = ['BA-L16LS','BA-L21LS','BA-L49LS','BA-L52LS','BA-L73LS']
 
 res_tutti = []
 for p in problems:
-    print('{}'.format(p))
+    #print('{}'.format(p))
     P = Problem(p)
+    print('{} {} {}'.format(P.name,P.n,P.m))
+    res_tutti.append([P.name, P.n, P.m])
+table = tabulate(res_tutti, headers=['Problem','n', 'm'], tablefmt = 'orgtbl')
+print(table)
+input()
+
+res_tutti = []
+for p in problems:
+    print('{}'.format(p))
+    P = Problem(p,approxg=True)
     res_parz = []
     #res_tutti.append([p, P.n, '', '', '', '', '', '', '', '', ''])
     S = Solver(P)
