@@ -3,6 +3,7 @@ import pycutest
 from scipy.optimize import minimize, approx_fprime, fmin_bfgs, fmin_l_bfgs_b
 from time import time, sleep
 from dfbox import der_free_method
+from nesterov import nesterov
 from scipy.linalg import hilbert
 from tabulate import tabulate
 import matplotlib.pyplot as plt
@@ -193,6 +194,10 @@ class Solver:
             sol, info = self.solvePlaneSearch_roma_box(prova=True)
         elif self.method == 'QPS-matteo-box':
             sol, info = self.solvePlaneSearch_roma_box()
+        elif self.method == 'NESTEROV-bs_dfbox':
+            sol, info = self.solvePlaneSearch_nesterov(der_free=True)
+        elif self.method == 'NESTEROV-bs_lbfgs':
+            sol, info = self.solvePlaneSearch_nesterov(der_free=False)
         elif self.method == 'CGlike':
             sol, info = self.solvePlaneSearch_CG()
         elif self.method == 'Barzilai':
@@ -204,7 +209,9 @@ class Solver:
         elif self.method == 'DFBOX':
             DFBOX = der_free_method(self.f,-np.inf*np.ones(self.problem.n),np.inf*np.ones(self.problem.n),maxfev=25000,tol=self.grad_tol)
             sol, info = DFBOX.sd_box(self.problem.get_x0())
-
+        elif self.method == 'NESTEROV':
+            NESTEROV = nesterov(self.f,self.g,self.problem.n,self.grad_tol,self.max_iters)
+            sol, info = NESTEROV.run(self.problem.get_x0())
         elif self.method == 'scipy_bfgs':
             bfgs = minimize(self.f, self.problem.get_x0(), jac=self.g, method="BFGS", options={"disp": False, "gtol": self.grad_tol, "maxiter": self.max_iters, 'norm': self.gtol_ord})
             info = {"iters": bfgs.nit, "f": bfgs.fun, "g_norm": np.linalg.norm(bfgs.jac, self.gtol_ord)}
@@ -319,12 +326,21 @@ class Solver:
             multistart-=1
         return best
 
-    def bidimensional_search_box(self, x, d1, d2, alpha0, beta0=0, multistart=0, deriv_free=False, maxfev=10):
+    def bidimensional_search_box(self, x, d1, d2, alpha0, beta0=0, multistart=0, deriv_free=False, maxfev=10,nesterov=False):
         nrd1 = np.linalg.norm(d1)
         nrd2 = np.linalg.norm(d2)
         def f2(ab):
             return self.f(x + ab[0] * d1 + ab[1] * d2)
-
+        
+        def f2nesterov(ab):
+            if ab[1] == 0:
+                y = x
+                g = -d1
+            else:
+                y = x + ab[1]*d2
+                g = self.g(y)
+            return self.f(y-ab[0]*g)
+            
         def g2(ab):
             g = self.g(x + ab[0] * d1 + ab[1] * d2)
             return [np.dot(g, d1), np.dot(g, d2)]
@@ -351,6 +367,20 @@ class Solver:
             #return minimize(f2, ab, jac=g2, bounds=[[0,10], [0,+10]], method="L-BFGS-B",
             #                 options={"iprint": -1, "maxcor": 5, "gtol": self.grad_tol, "ftol": 1e-30,"maxiter": 10})
 
+        class my_solution:
+            def __init__(self,n):
+                self.x = np.nan*np.ones(n)
+                self.fun = np.inf
+
+        def inner_nesterov(ab):
+            DFBOX2 = der_free_method(f2nesterov,-np.inf*np.ones(2),np.inf*np.ones(2),maxfev=100,tol=1.e-3)
+            sol, info = DFBOX2.sd_box(ab)
+            solution = my_solution(2)
+            solution.x = np.copy(sol)
+            solution.fun = info["f"]
+            return solution
+            #return minimize(f2nesterov, ab, method="Nelder-Mead", options={"disp": False, "maxfev": maxfev})
+            
         def inner_solve(ab):
             if not deriv_free:
                 return minimize(f2, ab, jac=g2, method="CG", options={"disp": False, "gtol": 1e-3, "maxiter": 10})
@@ -361,8 +391,16 @@ class Solver:
 
         #        alpha0=0.5
         #        beta0=0.
-        solution = inner_solve([alpha0, beta0])
-        #solution = inner_lbfgsb([alpha0,beta0])
+        #solution = inner_solve([alpha0, beta0])
+             
+        if nesterov:
+            #print('call Nesterov')
+            solution = inner_nesterov([alpha0, beta0])
+
+            #input()
+        else:
+            solution = inner_lbfgsb([alpha0,beta0])
+            
         best, best_f = solution.x, solution.fun
         # best, best_f = inner_BB(np.array([alpha0, beta0]))
         while multistart > 0:
@@ -373,6 +411,62 @@ class Solver:
                 best = solution.x
                 best_f = solution.fun
             multistart -= 1
+        return best, best_f
+
+    def bidimensional_search_nesterov(self, x, x1, g, g1, alpha1, alpha0, beta0=0, maxfev=10, der_free=True):
+        
+        def f2nesterov(ab):
+            d2 = x-x1
+            y = x - ab[0]*g
+            return self.f(y + ab[1]*(y - x1 + alpha1*g1))
+
+        def fg2nesterov(ab):
+            d2 = x-x1
+            y = x - ab[0]*g
+            yy = y + ab[1]*(y - x1 + alpha1*g1)
+            f = self.f(yy)
+            
+            eps = 1.e-6
+            z = np.copy(ab)
+            z[0] += eps
+            y = x - z[0]*g
+            yy = y + z[1]*(y - x1 + alpha1*g1)
+            f1 = self.f(yy)
+            z[0] = ab[0]
+            z[1] += eps
+            y = x - z[0]*g
+            yy = y + z[1]*(y - x1 + alpha1*g1)
+            f2 = self.f(yy)
+            
+            return f,np.array([(f1-f)/eps,(f2-f)/eps])
+            
+        class my_solution:
+            def __init__(self,n):
+                self.x = np.nan*np.ones(n)
+                self.fun = np.inf
+
+        def inner_lbfgsb(ab):
+            return minimize(fg2nesterov, ab, jac=True, method="L-BFGS-B",
+                             options={"iprint": -1, "maxcor": 5, "gtol": self.grad_tol, "ftol": 1e-30,"maxiter": 5})
+
+        def inner_nesterov(ab):
+            DFBOX2 = der_free_method(f2nesterov,-np.inf*np.ones(2),np.inf*np.ones(2),maxfev=100,tol=1.e-3)
+            sol, info = DFBOX2.sd_box(ab)
+            solution = my_solution(2)
+            solution.x = np.copy(sol)
+            solution.fun = info["f"]
+            return solution
+            #return minimize(f2nesterov, ab, method="Nelder-Mead", options={"disp": False, "maxfev": maxfev})
+
+        #print('call Nesterov')
+        if der_free:
+            solution = inner_nesterov([alpha0, beta0])
+        else:
+            solution = inner_lbfgsb([alpha0, beta0])
+        #input()
+            
+        best, best_f = solution.x, solution.fun
+        # best, best_f = inner_BB(np.array([alpha0, beta0]))
         return best, best_f
 
     def solvePlaneSearch_roma_box(self, iterative=False, prova=False):
@@ -637,6 +731,64 @@ class Solver:
                 
                 alpha, beta = aArm, 0
             new_x = xk - alpha*g + beta*(xk-xk_1)
+            xk_1 = xk
+            f_1, g_1 = f, g
+            xk = new_x
+            n_iters += 1
+        return xk, {"iters": n_iters, "f": f, "g_norm": g_norm, "nfails": num_fails, "nnegeig": "--", "cosmax": "--"}
+
+    def solvePlaneSearch_nesterov(self,der_free=True):
+        xk = self.problem.get_x0()
+        iterative=False
+        prova=False
+        n_iters=0
+        num_fails = 0
+        xk_1 = np.copy(xk)
+        f_1, g_1 = self.f_g(xk_1)
+        alpha, beta = 0,0
+        alpha1 = alpha
+        aArm = 1
+        g_norm = np.inf
+        count_barzilai = 0
+        while True:
+            f,g = self.f_g(xk)
+            #print('f = ',f)
+            g_norm_prev = g_norm
+            g_norm = np.linalg.norm(g,self.gtol_ord)
+            if g_norm > 1e6:
+                g = g/g_norm
+            if g_norm<self.grad_tol or n_iters >= self.max_iters:
+                break
+            if count_barzilai<1:
+                #ab, fExp = self.bidimensional_search_box(xk, -g, xk-xk_1, alpha0=alpha,beta0=beta,maxfev=100,nesterov=True)
+                ab, fExp = self.bidimensional_search_nesterov(xk, xk_1, g, g_1, alpha1, alpha0=0.0, maxfev=10, der_free=der_free)
+                #print(f,fExp)
+                #input()
+                #print(ab,np.shape(g),np.shape(xk-xk_1),fExp)
+                #fExp = self.f(xk-ab[0]*g+ab[1]*(xk-xk_1))
+                if fExp < f:
+                    alpha, beta = ab[0], ab[1]
+                    aArm = max(np.abs(alpha), 10*self.min_step)
+                else:
+                    num_fails += 1
+                    count_barzilai = self.recovery_steps
+                    alpha_start = self.bb_step(xk-xk_1, g-g_1, inverse=True)
+                    aArm = self.armijoLS(x=xk, f=f, g=g, d=-g, alpha0=alpha_start, gamma=self.gamma, min_step=self.min_step)
+                    
+
+                    alpha, beta = aArm, 0
+            else:
+                count_barzilai -= 1
+                alpha_start = self.bb_step(xk-xk_1, g-g_1, inverse=True)
+                aArm = self.armijoLS(x=xk, f=f, g=g, d=-g, alpha0=alpha_start, gamma=self.gamma, min_step=self.min_step)
+                
+                alpha, beta = aArm, 0
+                
+            #g = self.g(xk + beta*(xk-xk_1))
+            #new_x = xk - alpha*g + beta*(xk-xk_1)
+            y = xk - alpha*g
+            new_x = y + beta*(y - xk_1 + alpha1*g_1)
+            alpha1 = alpha
             xk_1 = xk
             f_1, g_1 = f, g
             xk = new_x
@@ -1105,6 +1257,8 @@ solvers = ['scipy_cg']
 solvers = ['QPS', 'QPS-approx', 'QPS-matteo-box', 'QPS-roma-box', 'scipy_lbfgs', 'scipy_cg']
 solvers = ['DFBOX']
 solvers = ['QPS', 'QPS-matteo-box', 'scipy_lbfgs', 'scipy_cg']
+solvers = ['NESTEROV']
+solvers = ['NESTEROV','NESTEROV-bs_dfbox', 'NESTEROV-bs_lbfgs', 'scipy_lbfgs']
 
 eps_grad = 1e-3
 
@@ -1129,13 +1283,6 @@ problems = ['GENROSE', 'ARWHEAD', 'BROYDN7D', 'CRAGGLVY', 'DIXMAANA1', 'DIXMAANB
 #problems = ['ARWHEAD']
 
 
-problems = ['ARWHEAD','BDQRTIC','BROYDN7D','BRYBND','CHAINWOO','CLPLATEB','CLPLATEC','COSINE','CRAGGLVY','CURLY10',
-            'CURLY20','DIXMAANA1','DIXMAANB','DIXMAANC','DIXMAAND','DIXMAANE1','DIXMAANF','DIXMAANG','DIXMAANH','DIXMAANI1','DIXMAANJ',
-            'DIXMAANK','DIXMAANL','DIXMAANM1','DIXMAANN','DIXMAANO','DIXMAANP','DIXON3DQ','DQDRTIC','DQRTIC','EDENSCH','ENGVAL1',
-            'EXTROSNB','FLETCBV3','FLETCHCR','FMINSRF2','FMINSURF','FREUROTH','GENROSE','LIARWHD','LMINSURF','MANCINO','MOREBV',
-            'NCB20','NCB20B','NLMSURF','NONCVXU2','NONCVXUN','NONDIA','NONDQUAR','ODC','PENALTY1','PENALTY2','PENALTY3','POWELLSG',
-            'POWER','QUARTC','RAYBENDL','RAYBENDS','SCHMVETT','SCOSINE','SENSORS','SPARSINE','SPARSQUR','SROSENBR','SSC','TESTQUAD',
-            'TOINTGSS','TQUARTIC','TRIDIA','VARDIM','VAREIGVL','WOODS']
 
 #'BA-L16LS','BA-L21LS','BA-L49LS','BA-L52LS','BA-L73LS',
             
@@ -1161,9 +1308,9 @@ problems = ['10FOLDTR','ARGLINA','ARGLINB','ARGLINC','ARGTRIGLS','BDEXP','BOX','
             'VANDANMSLS','VARDIM','VAREIGVL','WATSON','WOODS']
 
 problems = ['ARGLINA_10']
-problems = ['ARWHEAD']
 problems = ['GENROSE100']
 
+############ problemi cutest medio-piccoli (Morteza)
 problems = ['AKIVA','ALLINITU','ARGLINA_10','ARGLINA_50','ARGLINB_10','ARGLINB_50',
             'ARGLINC_10','ARGLINC_50','BARD','BDQRTIC','BEALE','BOX_100','BOX_10','BOX3','BOXPOWER',
             'BRKMCC','BROWNBS','BROWNDEN','BROYDN7D_10','BROYDN7D_50','BRYBND_100','BRYBND_50','BRYBND',
@@ -1196,22 +1343,33 @@ problems = ['AKIVA','ALLINITU','ARGLINA_10','ARGLINA_50','ARGLINB_10','ARGLINB_5
             'TRIDIA_20','TRIDIA_50','TRIDIA','VARDIM_100','VARDIM_50','VARDIM','VAREIGVL_100','VAREIGVL_10','VAREIGVL','VIBRBEAM',
             'WATSON_12','WATSON_31','WOODS_100','WOODS_4','ZANGWIL2',]
 
+problems = ['ARWHEAD']
+problems = ['GENROSE']
+
+problems = ['ARWHEAD','BDQRTIC','BROYDN7D','BRYBND','CHAINWOO','CLPLATEB','CLPLATEC','COSINE','CRAGGLVY','CURLY10',
+            'CURLY20','DIXMAANA1','DIXMAANB','DIXMAANC','DIXMAAND','DIXMAANE1','DIXMAANF','DIXMAANG','DIXMAANH','DIXMAANI1','DIXMAANJ',
+            'DIXMAANK','DIXMAANL','DIXMAANM1','DIXMAANN','DIXMAANO','DIXMAANP','DIXON3DQ','DQDRTIC','DQRTIC','EDENSCH','ENGVAL1',
+            'EXTROSNB','FLETCBV3','FLETCHCR','FMINSRF2','FMINSURF','FREUROTH','GENROSE','LIARWHD','LMINSURF','MANCINO','MOREBV',
+            'NCB20','NCB20B','NLMSURF','NONCVXU2','NONCVXUN','NONDIA','NONDQUAR','ODC','PENALTY1','PENALTY2','PENALTY3','POWELLSG',
+            'POWER','QUARTC','RAYBENDL','RAYBENDS','SCHMVETT','SCOSINE','SENSORS','SPARSINE','SPARSQUR','SROSENBR','SSC','TESTQUAD',
+            'TOINTGSS','TQUARTIC','TRIDIA','VARDIM','VAREIGVL','WOODS']
+
 #problems = ['BA-L16LS','BA-L21LS','BA-L49LS','BA-L52LS','BA-L73LS']
 
-res_tutti = []
-for p in problems:
-    #print('{}'.format(p))
-    P = Problem(p)
-    print('{} {} {}'.format(P.name,P.n,P.m))
-    res_tutti.append([P.name, P.n, P.m])
-table = tabulate(res_tutti, headers=['Problem','n', 'm'], tablefmt = 'orgtbl')
-print(table)
-input()
+#res_tutti = []
+#for p in problems:
+#    #print('{}'.format(p))
+#    P = Problem(p)
+#    print('{} {} {}'.format(P.name,P.n,P.m))
+#    res_tutti.append([P.name, P.n, P.m])
+#table = tabulate(res_tutti, headers=['Problem','n', 'm'], tablefmt = 'orgtbl')
+#print(table)
+#input()
 
 res_tutti = []
 for p in problems:
     print('{}'.format(p))
-    P = Problem(p,approxg=True)
+    P = Problem(p,approxg=False)
     res_parz = []
     #res_tutti.append([p, P.n, '', '', '', '', '', '', '', '', ''])
     S = Solver(P)

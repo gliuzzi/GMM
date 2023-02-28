@@ -25,7 +25,7 @@ import numpy as np
 from scipy.optimize import minimize
 
 class der_free_method:
-	def __init__(self,funct,lb,ub,maxiter=10000,maxfev=1000,tol=1.e-6,iprint=0):
+	def __init__(self,funct,lb,ub,maxiter=10000,maxfev=1000,tol=1.e-6,iprint=-1):
 		self.funct = funct
 		self.lb = lb
 		self.ub = ub
@@ -346,7 +346,13 @@ class der_free_method:
 			else:
 				i_corr = 1
 
-				if True:
+				#print("fk = {}, f = {}".format(fk,f))
+				if np.abs(f-fk) < 1.e-5:
+					nfails += 1
+				fk = f
+				#input()
+				if False:
+						
 					g = x - xk
 
 					def f2(ab):
@@ -356,7 +362,7 @@ class der_free_method:
 					# (alfa,beta) = (1,0) --> f(x)
 					# (alfa,beta) = (0,-1) --> f(xk_1)
 
-					sol = minimize(f2, [2.,0.], method="Nelder-Mead", options={"disp": False, "maxfev": 10})
+					sol = minimize(f2, [1.,0.], method="Nelder-Mead", options={"disp": False, "maxfev": 10})
 					ab = sol.x
 
 					#ab = self.QPS(xk,f,fk,fk_1,g,dm)
@@ -375,7 +381,7 @@ class der_free_method:
 					else:
 						xk = np.copy(x)
 						fk = f
-						nfails += 1
+						#nfails += 1
 					dm = xk - xk_1
 
 
