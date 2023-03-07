@@ -1,4 +1,4 @@
-function perf_profile(H,solvers)
+function perf_profile(H,solvers,Title)
 
 [np,ns] = size(H); % Grab the dimensions
 
@@ -6,6 +6,8 @@ function perf_profile(H,solvers)
 % For each problem and solver, determine the number of evaluations
 % required to reach the cutoff value
 T = H;
+
+T(find(T <= 1.e-12)) = 1.e-3;
 
 % Other colors, lines, and markers are easily possible:
 colors  = ['b' 'r' 'k' 'm' 'c' 'g' 'y'];   lines   = {'-' '-.' '--'};
@@ -20,6 +22,8 @@ max_ratio = max(max(r));
 %disp('perf_profile: max_ratio impostato a mano')
 r(isnan(r)) = 2*max_ratio;
 r = sort(r);
+
+max_ratio
 
 %ax(1) = axes('Position',[0.1 0.1 0.5 0.8]);
 % Plot stair graphs with markers.
@@ -46,6 +50,7 @@ end
 %axis([1 100 0 1]);
 axis([1 max_ratio 0 1]);
 legend(solvers);
+title(Title);
 xlabel('performance ratio, \alpha');
 ylabel('percentage of problems');
 

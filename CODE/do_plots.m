@@ -3,8 +3,14 @@ close all
 
 %T = readtable("risultati_2023-02-17.txt","delimiter",'|');
 %T = readtable("risultati_2023-02-20.txt","delimiter",'|');
-T = readtable("risultati_2023-02-20_fg2.txt","delimiter",'|');
-T = T(1:1364,:);
+%T = readtable("risultati_2023-02-20_fg2.txt","delimiter",'|');
+%T = T(1:1364,:);
+%T = readtable("risultati_2023-02-28.txt","delimiter",'|');
+%T = T(1:364,:);
+%T = readtable("risultati_2023-03-07.txt","delimiter",'|');
+%T = T(1:364,:);
+T = readtable("risultati.txt","delimiter",'|');
+T = T(1:218,:);
 %%%
 % le colonne di T sono le seguenti:
 % Var1 : NOT USED

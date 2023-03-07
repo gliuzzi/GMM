@@ -3,6 +3,7 @@ import pycutest
 from scipy.optimize import minimize, approx_fprime, fmin_bfgs, fmin_l_bfgs_b
 from time import time, sleep
 from dfbox import der_free_method
+from Newton import *
 from nesterov import nesterov
 from scipy.linalg import hilbert
 from tabulate import tabulate
@@ -196,8 +197,12 @@ class Solver:
             sol, info = self.solvePlaneSearch_roma_box()
         elif self.method == 'NESTEROV-bs_dfbox':
             sol, info = self.solvePlaneSearch_nesterov(der_free=True)
+        elif self.method == 'NESTEROV-tri_NM':
+            sol, info = self.solvePlaneSearch_trinesterov()
         elif self.method == 'NESTEROV-bs_lbfgs':
             sol, info = self.solvePlaneSearch_nesterov(der_free=False)
+        elif  self.method == 'QPS-Newton':
+            sol, info = self.solvePlaneSearch_Newton()        
         elif self.method == 'CGlike':
             sol, info = self.solvePlaneSearch_CG()
         elif self.method == 'Barzilai':
@@ -469,6 +474,35 @@ class Solver:
         # best, best_f = inner_BB(np.array([alpha0, beta0]))
         return best, best_f
 
+    def tridimensional_search_nesterov(self, x, x1, alpha0, beta1=0, beta2=0, maxfev=10, der_free=True):
+
+        def f3nesterov(abc):
+            d2 = x - x1
+            y = x + abc[1] * d2
+            return self.f(x - abc[0]*self.g(y) + abc[2]*d2)
+
+        class my_solution:
+            def __init__(self, n):
+                self.x = np.nan * np.ones(n)
+                self.fun = np.inf
+
+        def inner_nesterov(abc):
+            DFBOX2 = der_free_method(f3nesterov, -np.inf * np.ones(3), np.inf * np.ones(3), maxfev=maxfev, tol=1.e-3)
+            sol, info = DFBOX2.sd_box(abc)
+            solution = my_solution(3)
+            solution.x = np.copy(sol)
+            solution.fun = info["f"]
+            return solution
+            #return minimize(f3nesterov, abc, method="Nelder-Mead", options={"disp": False, "maxfev": maxfev})
+
+        # print('call Nesterov')
+        solution = inner_nesterov([alpha0, beta1, beta2])
+        # input()
+
+        best, best_f = solution.x, solution.fun
+        # best, best_f = inner_BB(np.array([alpha0, beta0]))
+        return best, best_f
+
     def solvePlaneSearch_roma_box(self, iterative=False, prova=False):
         xk = self.problem.get_x0()
         n_iters = 0
@@ -711,8 +745,13 @@ class Solver:
                     if prova:
                         ab = self.quadratic_plane_search_prova(xk, xk_1, f, f_1, g, alpha, beta)
                     else:
-                        ab = self.quadratic_plane_search(xk, xk_1, f, f_1, g, alpha, beta)
-                    fExp = self.f(xk-ab[0]*g+ab[1]*(xk-xk_1))
+                        ab,fExp = self.quadratic_plane_search_Armijo(xk, xk_1, f, f_1, g, alpha, beta)
+
+                    #if (ab[0] < 1.e-12):
+                    #    ab[0] = 1.e-12
+                    #    # print('alfa piccolo')
+                    #    fExp = self.f(xk - ab[0] * g + ab[1] * (xk - xk_1))
+                    #fExp = self.f(xk-ab[0]*g+ab[1]*(xk-xk_1))
                 if fExp < f:
                     alpha, beta = ab[0], ab[1]
                     aArm = max(np.abs(alpha), 10*self.min_step)
@@ -721,7 +760,6 @@ class Solver:
                     count_barzilai = self.recovery_steps
                     alpha_start = self.bb_step(xk-xk_1, g-g_1, inverse=True)
                     aArm = self.armijoLS(x=xk, f=f, g=g, d=-g, alpha0=alpha_start, gamma=self.gamma, min_step=self.min_step)
-                    
 
                     alpha, beta = aArm, 0
             else:
@@ -736,6 +774,97 @@ class Solver:
             xk = new_x
             n_iters += 1
         return xk, {"iters": n_iters, "f": f, "g_norm": g_norm, "nfails": num_fails, "nnegeig": "--", "cosmax": "--"}
+
+    def bidimensional_search_Newton(self,finiz, x, d1, d2,n_iter_glob , alpha0, beta0=0, multistart=0, deriv_free=False, maxfev=10):
+        def f2(ab):
+            return self.f(x + ab[0] * d1 + ab[1] * d2)
+
+        def g2(ab):
+            g = self.g(x + ab[0] * d1 + ab[1] * d2)
+            return [np.dot(g, d1), np.dot(g, d2)]
+
+        def fg2(ab):
+            g = self.g(x + ab[0] * d1 + ab[1] * d2)
+            return self.f(x + ab[0] * d1 + ab[1] * d2), np.array(np.dot(g, d1), np.dot(g, d2))
+			
+        def inner_NN(ab):
+            # print('d1=',d1)
+            # gapp=-np.dot(d1.T,d1)
+            # #print('d1=',d1)
+            # print('grad app',gapp)			
+            NN=Newton(2,finiz,ab,1.e-3*self.grad_tol*self.grad_tol,1,False,f2,d1,d2,n_iter_glob)
+            f,x=NN.minimize()
+            return f,x
+
+        best_f,best = inner_NN([alpha0,beta0])
+        return best,best_f 
+
+    def solvePlaneSearch_Newton(self):
+        xk = self.problem.get_x0()
+        n_iters = 0
+        num_fails = 0
+        xk_1 = np.copy(xk)
+        f_1, g_1 = self.f_g(xk_1)
+        alpha, beta = 0, 0
+        aArm = 1
+
+        g_norm = np.inf
+        while True:
+            if n_iters ==0:
+                f, g = f_1, g_1		
+            else:
+                f, g = self.f_g(xk)
+            g_norm_prev = g_norm
+            g_norm = np.linalg.norm(g, self.gtol_ord)
+            # if np.dot(g.T,(xk-xk_1)) > 0.:
+                #xk_1=xk
+                # xk_1=2.*xk-xk_1
+            if g_norm >  1.e+9:
+                #print(' gnorm=',g_norm)
+                g = g / g_norm*1.e+9
+            if g_norm < self.grad_tol or n_iters >= self.max_iters:
+                break
+       
+            #gnr = np.linalg.norm(g)
+            ab = np.zeros(2)
+            ab[0]=0.
+            ab[1]=0.  
+			
+            #if prova:
+                #ab = self.quadratic_plane_search_prova(xk, xk_1, f, f_1, g, alpha, beta)
+            #else:
+                #ab = self.quadratic_plane_search(xk, xk_1, f, f_1, g, alpha, beta)
+                #ab[0]=np.maximum(0.,ab[0])
+
+            if True:
+            #if fExp >= f:
+                fExp=f
+                ab,fExp = self.bidimensional_search_Newton(fExp,xk, -g, xk - xk_1,n_iters, alpha0=ab[0], beta0=ab[1], deriv_free=True, maxfev=5)
+                if (ab[0]< 1.e-12):
+                    ab[0]=1.e-12
+                    #print('alfa piccolo')
+                    fExp = self.f(xk - ab[0] * g + ab[1] * (xk - xk_1))
+            if fExp <= f:
+                alpha, beta = ab[0], ab[1]
+                aArm = max(np.abs(alpha), 10 * self.min_step)
+            else:
+                num_fails += 1
+                count_barzilai = self.recovery_steps
+                alpha_start = self.bb_step(xk - xk_1, g - g_1, inverse=True)
+                aArm = self.armijoLS(x=xk, f=f, g=g, d=-g, alpha0=alpha_start, gamma=self.gamma,
+                                         min_step=self.min_step)
+                alpha, beta = aArm, 0         
+
+            self.alfas.append(alpha)
+            self.betas.append(beta)
+            new_x = xk - alpha * g + beta * (xk - xk_1)
+            xk_1 = xk
+            f_1, g_1 = f, g
+            xk = new_x
+            n_iters += 1
+            #print('iter=',n_iters)
+        return xk, {"iters": n_iters, "f": f, "g_norm": g_norm, "nfails": num_fails, "nnegeig": self.nnegeig, "cosmax": '----'}
+
 
     def solvePlaneSearch_nesterov(self,der_free=True):
         xk = self.problem.get_x0()
@@ -795,6 +924,65 @@ class Solver:
             n_iters += 1
         return xk, {"iters": n_iters, "f": f, "g_norm": g_norm, "nfails": num_fails, "nnegeig": "--", "cosmax": "--"}
 
+    def solvePlaneSearch_trinesterov(self, der_free=True):
+        xk = self.problem.get_x0()
+        iterative = False
+        prova = False
+        n_iters = 0
+        num_fails = 0
+        xk_1 = np.copy(xk)
+        f_1, g_1 = self.f_g(xk_1)
+        alpha, beta1, beta2 = 0, 0, 0
+        alpha1 = alpha
+        aArm = 1
+        g_norm = np.inf
+        count_barzilai = 0
+        while True:
+            f, g = self.f_g(xk)
+            # print('f = ',f)
+            g_norm_prev = g_norm
+            g_norm = np.linalg.norm(g, self.gtol_ord)
+            if g_norm > 1e6:
+                g = g / g_norm
+            if g_norm < self.grad_tol or n_iters >= self.max_iters:
+                break
+            if count_barzilai < 1:
+                # ab, fExp = self.bidimensional_search_box(xk, -g, xk-xk_1, alpha0=alpha,beta0=beta,maxfev=100,nesterov=True)
+                abc, fExp = self.tridimensional_search_nesterov(xk, xk_1, alpha0=alpha,beta1=beta1,beta2=beta2,
+                                                                maxfev=100, der_free=der_free)
+                # print(f,fExp)
+                # input()
+                # print(ab,np.shape(g),np.shape(xk-xk_1),fExp)
+                # fExp = self.f(xk-ab[0]*g+ab[1]*(xk-xk_1))
+                if fExp < f:
+                    alpha, beta1, beta2 = abc[0], abc[1], abc[2]
+                    aArm = max(np.abs(alpha), 10 * self.min_step)
+                else:
+                    num_fails += 1
+                    count_barzilai = self.recovery_steps
+                    alpha_start = self.bb_step(xk - xk_1, g - g_1, inverse=True)
+                    aArm = self.armijoLS(x=xk, f=f, g=g, d=-g, alpha0=alpha_start, gamma=self.gamma,
+                                         min_step=self.min_step)
+
+                    alpha, beta1, beta2 = aArm, 0, 0
+            else:
+                count_barzilai -= 1
+                alpha_start = self.bb_step(xk - xk_1, g - g_1, inverse=True)
+                aArm = self.armijoLS(x=xk, f=f, g=g, d=-g, alpha0=alpha_start, gamma=self.gamma, min_step=self.min_step)
+
+                alpha, beta1, beta2 = aArm, 0, 0
+
+            g = self.g(xk + beta1*(xk-xk_1))
+            new_x = xk - alpha*g + beta2*(xk-xk_1)
+            #y = xk - alpha * g
+            #new_x = y + beta * (y - xk_1 + alpha1 * g_1)
+            #alpha1 = alpha
+            xk_1 = xk
+            f_1, g_1 = f, g
+            xk = new_x
+            n_iters += 1
+        return xk, {"iters": n_iters, "f": f, "g_norm": g_norm, "nfails": num_fails, "nnegeig": "--", "cosmax": "--"}
+
     def CGlike_search(self, xk, f, f_1, g, g_1):
         ab = np.zeros(2)
         eps = 1.e-6
@@ -804,6 +992,7 @@ class Solver:
         alpha0 = gnrm2 / (g.dot(Hg))
         beta0 = gnrm2 / g_1.dot(g_1)
         return np.array([alpha0,beta0])
+        
     def quadratic_plane_search_prova(self, xk, xk_1, f, f_1, g, alpha, beta):
         # find quadratic approximating function and find d by solving system
         # Hd = -g
@@ -970,6 +1159,152 @@ class Solver:
         best = solution_closed
         return best
 
+    def quadratic_plane_search_Armijo(self, xk, xk_1, f, f_1, g, alpha, beta):
+        def linesearch_armijo(n, x, f, d, gd, gamma, funct):
+
+            alfa = 1.
+
+            y = np.zeros(n)
+
+            y = x + alfa * d
+            f_alfa = funct(y)
+
+            #        while(f_alfa >1.e+20 ):
+            while (f_alfa > (f + alfa * gamma * gd)):
+                if f_alfa - (f + alfa * gamma * gd) > 1.e6:
+                    alfa = alfa / 10.
+                else:
+                    alfa = alfa / 2.
+                y = x + alfa * d
+                f_alfa = funct(y)
+
+            return alfa, f_alfa
+
+        ab0 = np.zeros(2)
+        d1 = -g
+        d2 = xk - xk_1
+        D = np.vstack((d1, d2)).T
+        gab = g @ D
+
+        def gradiente_Hessiano(n,x,f,prec,funct,d1,d2,n_iter):
+            d1_norm=np.linalg.norm(d1,2)
+            d2_norm=np.linalg.norm(d2,2)
+            prec1=prec/min(np.maximum(d1_norm,1.e-6),1.e+6)
+            prec2=prec/min(np.maximum(d2_norm,1.e-6),1.e+6)
+            # prec1=1.e-6
+            # prec2=1.e-6
+            gapp=np.zeros(n)
+            HessApp=np.zeros(shape=(n,n))
+            if d2_norm==0.:
+                if (n_iter==1):
+                    x1=np.copy(x)
+                    gapp[0]=-d1_norm*d1_norm
+                    x1[0]=x1[0]+prec1
+                    f1=funct(x1)
+                else:
+                    x1=np.copy(x)
+                    xm=np.copy(x)
+                    x1[0]=x1[0]+prec1
+                    xm[0]=xm[0]-prec1
+                    f1=funct(x1)
+                    fm=funct(xm)
+                    gapp[0]=(f1-fm)/(2.*prec1)
+                    gapp[1]=0.0
+                ba = (2./prec1)*((f1-f)/prec1-gapp[0])
+                bc = 0.
+                bb = 0.
+                HessApp = np.array([[ba, bb], [bb, bc]])
+                return gapp,HessApp
+            if (n_iter==1):
+                gapp[0]=-d1_norm*d1_norm
+                gapp[1]=-np.dot(d1.T,d2)
+                x1=np.copy(x)
+                x1[0]=x1[0]+prec1
+                f1=funct(x1)
+                x1=np.copy(x)
+                x1[1]=x1[1]+prec2
+                f2=funct(x1)
+            else:
+                x1=np.copy(x)
+                xm=np.copy(x)
+                x1[0]=x1[0]+prec1
+                xm[0]=xm[0]-prec1
+                f1=funct(x1)
+                fm=funct(xm)
+                gapp[0]=(f1-fm)/(2.*prec1)
+                x1=np.copy(x)
+                xm=np.copy(x)
+                x1[1]=x1[1]+prec2
+                xm[1]=xm[1]-prec2
+                f2=funct(x1)
+                fm=funct(xm)
+                gapp[1]=(f2-fm)/(2.*prec2)
+            x1=np.copy(x)
+            x1[0]=x1[0]+prec1
+            x1[1]=x1[1]+prec2
+            f3=funct(x1)
+            ba = (2./prec1)*((f1-f)/prec1-gapp[0])
+            bc = (2./prec2)*((f2-f)/prec2-gapp[1])
+            bb = (1./prec1)*((f3-f)/prec2)-(1./prec2)*((f1-f)/prec1)-(1./prec1)*((f2-f)/prec2)
+            if False: #bc != bc1 or ba != ba1 or bb != bb1:
+                print(bc,' ',bc2)
+                print(ba, ' ', ba2)
+                print(bb, ' ', bb2)
+                input()
+            HessApp = np.array([[ba, bb], [bb, bc]])
+            return gapp,HessApp
+
+        def f2(ab):
+            return self.f(xk + ab[0] * d1 + ab[1] * d2)
+
+        if False:
+            min_sample_val = 1e-8
+            if np.abs(alpha) <= min_sample_val:
+                alpha = min_sample_val if alpha >= 0 else -min_sample_val
+            if np.abs(beta) <= min_sample_val:
+                beta = min_sample_val if beta >= 0 else -min_sample_val
+
+            fA = f
+            fB = f_1
+            fC = self.f(xk + alpha * d1 + beta * d2)
+            fD = self.f(xk + alpha * d1)
+
+            bc = 2 * (gab[1] + fB - fA)
+            ba = 2 / (alpha ** 2) * (fD - alpha * gab[0] - fA)
+            bb = (fC - fA - gab[0] * alpha - gab[1] * beta - 0.5 * alpha * alpha * ba - 0.5 * beta * beta * bc) / (
+                        alpha * beta)
+
+            Bab = np.array([[ba, bb], [bb, bc]])
+        else:
+            gt, Bab = gradiente_Hessiano(2,np.array([0.0, 0.0]),f,1.e-3,f2,d1,d2,1)
+
+        d = np.zeros(2)
+
+        if (Bab[1, 1] == 0) and (Bab[0, 1] == 0):
+            d[0] = min(np.maximum(-gab[0] / Bab[0, 0], 1.e-9), 1.e9)
+            d[1] = 0.
+            # print('d[0]=',d[0])
+            gd = np.dot(gab.T, d)
+        else:
+            try:
+                solution_closed = np.linalg.solve(Bab, -gab)
+            except np.linalg.LinAlgError:
+                solution_closed = np.linalg.lstsq(Bab, -gab, rcond=None)[0]
+            d = solution_closed
+            gd = np.dot(gab.T, d)
+
+        if (d[0]< 1.e-7):
+                d[0]=1.e1*d[0]
+                d[1]=1.e1*d[1]
+                gd=np.dot(gab.T,d)
+
+        if (gd > 0):
+            d = -d
+            gd = -gd
+
+        alfaArm,f_alfa = linesearch_armijo(2, np.array([0.0, 0.0]), f, d, gd, 1.e-6, f2)
+        best = alfaArm*d
+        return best,f_alfa
 
     def iterative_quadratic_plane_search(self, xk, xk_1, f, f_1, g, alpha, beta):
         ab0 = np.zeros(2)
@@ -1259,9 +1594,11 @@ solvers = ['DFBOX']
 solvers = ['QPS', 'QPS-matteo-box', 'scipy_lbfgs', 'scipy_cg']
 solvers = ['NESTEROV']
 solvers = ['NESTEROV','NESTEROV-bs_dfbox', 'NESTEROV-bs_lbfgs', 'scipy_lbfgs']
+solvers = ['QPS', 'QPS-Newton', 'scipy_lbfgs', 'scipy_cg']
+solvers = ['NESTEROV-tri_NM']
+solvers = ['QPS', 'QPS-Newton']
 
 eps_grad = 1e-3
-
 
 # TEST CUTEST
 problems = ['GENROSE', 'ARWHEAD', 'BROYDN7D', 'CRAGGLVY', 'DIXMAANA1', 'DIXMAANB', 'DIXMAANC', 'DIXMAAND', 'DIXMAANE1', 'DIXMAANF', 'DIXMAANG', 'DIXMAANH', 'DIXMAANI1', 'DIXMAANJ', 'DIXMAANK', 'DIXMAANL', 'DIXMAANM1',
@@ -1353,6 +1690,8 @@ problems = ['ARWHEAD','BDQRTIC','BROYDN7D','BRYBND','CHAINWOO','CLPLATEB','CLPLA
             'NCB20','NCB20B','NLMSURF','NONCVXU2','NONCVXUN','NONDIA','NONDQUAR','ODC','PENALTY1','PENALTY2','PENALTY3','POWELLSG',
             'POWER','QUARTC','RAYBENDL','RAYBENDS','SCHMVETT','SCOSINE','SENSORS','SPARSINE','SPARSQUR','SROSENBR','SSC','TESTQUAD',
             'TOINTGSS','TQUARTIC','TRIDIA','VARDIM','VAREIGVL','WOODS']
+
+problems = ['CHAINWOO']
 
 #problems = ['BA-L16LS','BA-L21LS','BA-L49LS','BA-L52LS','BA-L73LS']
 
