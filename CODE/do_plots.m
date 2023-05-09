@@ -9,8 +9,13 @@ close all
 %T = T(1:364,:);
 %T = readtable("risultati_2023-03-07.txt","delimiter",'|');
 %T = T(1:364,:);
-T = readtable("risultati.txt","delimiter",'|');
-T = T(1:218,:);
+%T = readtable("risultati.txt","delimiter",'|');
+%T = T(1:218,:);
+%T = readtable("risultati_2023-03-11.txt","delimiter",'|');
+%T = T(1:291,:);
+T = readtable("risultati-tutti-new-prec-3.txt","delimiter",'|');
+T = T(1:915,:);
+
 %%%
 % le colonne di T sono le seguenti:
 % Var1 : NOT USED
@@ -86,11 +91,57 @@ for row = 1:rows
     end
 end
 
+
 I = [];
 for ip = 1:np
-    if max(Hfval(ip,:)) - min(Hfval(ip,:)) < 1.e-3
+    if (max(Hfval(ip,[2,3])) - min(Hfval(ip,[2,3])) < 1.e-3) && ...
+       (min(Hfval(ip,[2,3])) > -1.e+16)
         I = [I ip];
     end
 end
 
+I2 = [];
+for ip = 1:np
+    if (min(Hfval(ip,[2,3])) > -1.e+16)
+        I2 = [I2 ip];
+    end
+end
 
+
+figure()
+subplot(2,3,1);
+perf_profile(Htime(I2,[1,3]),S([1,3]),'Time')
+subplot(2,3,2);
+perf_profile(Htime(I2,[1,2]),S([1,2]),'Time')
+subplot(2,3,3);
+perf_profile(Htime(I2,[2,3]),S([2,3]),'Time')
+
+subplot(2,3,4);
+perf_profile(Hiter(I2,[1,3]),S([1,3]),'Iter')
+subplot(2,3,5);
+perf_profile(Hiter(I2,[1,2]),S([1,2]),'Iter')
+subplot(2,3,6);
+perf_profile(Hiter(I2,[2,3]),S([2,3]),'Iter')
+
+
+figure()
+subplot(2,3,1);
+perf_profile(Htime(I,[1,3]),S([1,3]),'Time')
+subplot(2,3,2);
+perf_profile(Htime(I,[1,2]),S([1,2]),'Time')
+subplot(2,3,3);
+perf_profile(Htime(I,[2,3]),S([2,3]),'Time')
+
+subplot(2,3,4);
+perf_profile(Hiter(I,[1,3]),S([1,3]),'Iter')
+subplot(2,3,5);
+perf_profile(Hiter(I,[1,2]),S([1,2]),'Iter')
+subplot(2,3,6);
+perf_profile(Hiter(I,[2,3]),S([2,3]),'Iter')
+
+
+%figure()
+%subplot(1,2,1);
+%perf_profile(Htime(:,:),S(:),'Time')
+%subplot(1,2,2);
+%perf_profile(Hiter,S,'Iter')
