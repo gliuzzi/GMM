@@ -7,7 +7,7 @@ function perf_profile(H,solvers,Title)
 % required to reach the cutoff value
 T = H;
 
-T(find(T <= 1.e-12)) = 1.e-3;
+%T(find(T <= 1.e-12)) = 1.e-6;
 
 % Other colors, lines, and markers are easily possible:
 colors  = ['b' 'r' 'k' 'm' 'c' 'g' 'y'];   lines   = {'-' '-.' '--'};
@@ -18,12 +18,12 @@ r = T./repmat(min(T,[],2),1,ns);
 
 % Replace all NaN's with twice the max_ratio and sort.
 max_ratio = max(max(r));
-%max_ratio = 40;
+%max_ratio = 1000000;
 %disp('perf_profile: max_ratio impostato a mano')
 r(isnan(r)) = 2*max_ratio;
 r = sort(r);
 
-max_ratio
+max_ratio;
 
 %ax(1) = axes('Position',[0.1 0.1 0.5 0.8]);
 % Plot stair graphs with markers.
@@ -49,7 +49,7 @@ end
 %axis([1 5 0 1]);
 %axis([1 100 0 1]);
 axis([1 max_ratio 0 1]);
-legend(solvers);
+legend(solvers,'Location','SouthEast');
 title(Title);
 xlabel('performance ratio, \alpha');
 ylabel('percentage of problems');
