@@ -17,6 +17,8 @@ close all
 %T = T(1:915,:);
 T = readtable("risultati-tot-7-new.txt","delimiter",'|');
 T = T(1:1464,:);
+%T = readtable("risultati-tot-7-norm.txt","delimiter",'|');
+%T = T(1:1464,:);
 %T = readtable("risultati.txt","delimiter",'|');
 %T = T(1:1464,:);
 
@@ -152,54 +154,57 @@ if reply == 'Y'
         S{i} = strrep(S{i},'_','\_');
     end
     
-    figure()
-    subplot(2,3,1);
-    perf_profile(Htime(:,[2,6]),S([2,6]),'Time')
-    subplot(2,3,2);
-    perf_profile(Htime(:,[4,6]),S([4,6]),'Time')
-    subplot(2,3,3);
-    perf_profile(Htime(:,[2,4]),S([2,4]),'Time')
-    subplot(2,3,4);
-    perf_profile(Hiter(:,[2,6]),S([2,6]),'Time')
-    subplot(2,3,5);
-    perf_profile(Hiter(:,[4,6]),S([4,6]),'Time')
-    subplot(2,3,6);
-    perf_profile(Hiter(:,[2,4]),S([2,4]),'Time')
+    if 0
+        figure()
+        subplot(2,3,1);
+        perf_profile(Htime(:,[2,6]),S([2,6]),'Time')
+        subplot(2,3,2);
+        perf_profile(Htime(:,[4,6]),S([4,6]),'Time')
+        subplot(2,3,3);
+        perf_profile(Htime(:,[2,4]),S([2,4]),'Time')
+        subplot(2,3,4);
+        perf_profile(Hiter(:,[2,6]),S([2,6]),'Time')
+        subplot(2,3,5);
+        perf_profile(Hiter(:,[4,6]),S([4,6]),'Time')
+        subplot(2,3,6);
+        perf_profile(Hiter(:,[2,4]),S([2,4]),'Time')
 
-    figure()
-    subplot(1,2,1);
-    perf_profile(Htime(:,[5,7]),S([5,7]),'Time')
-    subplot(1,2,2);
-    perf_profile(Hiter(:,[5,7]),S([5,7]),'Iter')
+        figure()
+        subplot(1,2,1);
+        perf_profile(Htime(:,[5,7]),S([5,7]),'Time')
+        subplot(1,2,2);
+        perf_profile(Hiter(:,[5,7]),S([5,7]),'Iter')
 
 
-    figure()
-    subplot(2,3,1);
-    perf_profile(Htime(I,[2,1]),S([2,1]),'Time')
-    subplot(2,3,2);
-    perf_profile(Htime(I,[2,3]),S([2,3]),'Time')
-    subplot(2,3,3);
-    perf_profile(Htime(I,[2,4]),S([2,4]),'Time')
+        figure()
+        subplot(2,3,1);
+        perf_profile(Htime(I,[2,1]),S([2,1]),'Time')
+        subplot(2,3,2);
+        perf_profile(Htime(I,[2,3]),S([2,3]),'Time')
+        subplot(2,3,3);
+        perf_profile(Htime(I,[2,4]),S([2,4]),'Time')
 
-    subplot(2,3,4);
-    perf_profile(Hiter(I,[2,1]),S([2,1]),'Iter')
-    subplot(2,3,5);
-    perf_profile(Hiter(I,[2,3]),S([2,3]),'Iter')
-    subplot(2,3,6);
-    perf_profile(Hiter(I,[2,4]),S([2,4]),'Iter')
+        subplot(2,3,4);
+        perf_profile(Hiter(I,[2,1]),S([2,1]),'Iter')
+        subplot(2,3,5);
+        perf_profile(Hiter(I,[2,3]),S([2,3]),'Iter')
+        subplot(2,3,6);
+        perf_profile(Hiter(I,[2,4]),S([2,4]),'Iter')
 
-    figure()
-    subplot(1,2,1);
-    perf_profile(Htime,S,'Time')
+        figure()
+        subplot(1,2,1);
+        perf_profile(Htime,S,'Time')
 
-    subplot(1,2,2);
-    perf_profile(Hiter,S,'Iter')
+        subplot(1,2,2);
+        perf_profile(Hiter,S,'Iter')
 
-    figure()
-    subplot(1,2,1);
-    perf_profile(Htime(I,:),S,'Time')
+        figure()
+        subplot(1,2,1);
+        perf_profile(Htime(I,:),S,'Time')
 
-    subplot(1,2,2);
-    perf_profile(Hiter(I,:),S,'Iter')
+        subplot(1,2,2);
+        perf_profile(Hiter(I,:),S,'Iter')
+    end
+    perf_profile(Htime(:,[4,7]),S([4,7]),'Time')
 
 end
