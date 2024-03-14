@@ -1,2 +1,5 @@
-# QPS
- Quadratic Planar Search - Accellerazione metodo di Polyak
+# Gradient Method with Momentum (GMM)
+A globally convergent gradient method with momentum (GMM)
+
+## Authors
+Matteo Lapucci, Giampaolo Liuzzi, Stefano Lucidi, Marco Sciandrone
