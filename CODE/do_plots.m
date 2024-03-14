@@ -153,19 +153,35 @@ disp(QPS)
 disp(LBFGS)
 
 LS = {
-    '-bs', %GMM1
+    '--k^', %'-bs', %GMM1
     '-bx', 
     '-bh',
-    '--k^', %GMM3
+    '-ko', %'--k^', %GMM3
     '--ys',
     '--yh',
     '--yp',
     '--y<',
     '--cs',
     '--ch',
-    '-.ro', %GMM2
-    '-g*', %L-BFGS
-    '-mv' %CG    
+    '-.ks', %'-.ro', %GMM2
+    '-rx', %'-g*', %L-BFGS
+    '-bv' %'-mv' %CG    
+    };
+
+CS = {
+    [0 0.5 1], %GMM1
+    '-bx', 
+    '-bh',
+    [0 0.5 0.5], %GMM3
+    '--ys',
+    '--yh',
+    '--yp',
+    '--y<',
+    '--cs',
+    '--ch',
+    [0 0 1], %GMM2
+    [1 0 0], %L-BFGS
+    [0.5 1 0] %CG    
     };
 
 SS = {
@@ -197,18 +213,18 @@ confronti = {[11,12]};
 
 nc = size(confronti,2);
 
-figure('Position',[0,0,2000,1000])
+figure('Position',[0,0,2000,600])
 i = 1;
 for pp = confronti
     pair = pp{1};
     subplot(nc,2,i);
-    perf_profile(Htime(:,pair),SS(pair),'Time',LS(pair))
+    perf_profile(Htime(:,pair),SS(pair),'Time',LS(pair),CS(pair))
     subplot(nc,2,i+1)
-    perf_profile(Hiter(:,pair),SS(pair),'Iter',LS(pair))
+    perf_profile(Hiter(:,pair),SS(pair),'Iter',LS(pair),CS(pair))
     i = i+1;
 end
 
-figure('Position',[0,0,2000,1000])
+figure('Position',[0,0,2000,600])
 i = 1;
 for pp = confronti
     pair = pp{1};
@@ -235,9 +251,9 @@ for pp = confronti
     
     end
     subplot(nc,2,i);
-    perf_profile(Htime(I,pair),SS(pair),'Time',LS(pair))
+    perf_profile(Htime(I,pair),SS(pair),'Time',LS(pair),CS(pair))
     subplot(nc,2,i+1)
-    perf_profile(Hiter(I,pair),SS(pair),'Iter',LS(pair))
+    perf_profile(Hiter(I,pair),SS(pair),'Iter',LS(pair),CS(pair))
     i = i+1;
     nu = size(I,2);
     for p = 1:size(pair,2)

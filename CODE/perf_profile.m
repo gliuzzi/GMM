@@ -1,4 +1,4 @@
-function perf_profile(H,solvers,Title,linest)
+function perf_profile(H,solvers,Title,linest,CS)
 
 [np,ns] = size(H); % Grab the dimensions
 
@@ -39,7 +39,7 @@ for s = 1:ns
 
     sl = mod(s-1,3) + 1; sc = mod(s-1,7) + 1; sm = mod(s-1,12) + 1;
     option1 = [char(lines(sl)) colors(sc) markers(sm)];
-    hl(s) = semilogx(xs,ys,linest{s});
+    hl(s) = semilogx(xs,ys,linest{s},'Color',CS{s});
     %hl(s) = plot(xs,ys,option1);
     hold on;
 end
