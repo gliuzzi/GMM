@@ -52,21 +52,21 @@ for row = 1:rows
     disp(name)
 end   
 
-SS = {
-'$QPS_1$',
-'QPS-Diagonale1',
-'QPS-Diagonale2',
-'$QPS_3$',
-'QPS-Diagonale4',
-'QPS-Diagonale5',
-'QPS-Diagonale6',
-'QPS-Diagonale7',
-'QPS-Diagonale8',
-'QPS-Newton',
-'$QPS_2$',
-'$lBFGS_{scipy}$',
-'$CG_{scipy}$'
-};
+%SS = {
+%'$QPS_1$',
+%'QPS-Diagonale1',
+%'QPS-Diagonale2',
+%'$QPS_3$',
+%'QPS-Diagonale4',
+%'QPS-Diagonale5',
+%'QPS-Diagonale6',
+%'QPS-Diagonale7',
+%'QPS-Diagonale8',
+%'QPS-Newton',
+%'$QPS_2$',
+%'$lBFGS_{scipy}$',
+%'$CG_{scipy}$'
+%};
 
 % get problem names
 P = {};
@@ -152,30 +152,63 @@ end
 disp(QPS)
 disp(LBFGS)
 
+LS = {
+    '-bs', %GMM1
+    '-bx', 
+    '-bh',
+    '--k^', %GMM3
+    '--ys',
+    '--yh',
+    '--yp',
+    '--y<',
+    '--cs',
+    '--ch',
+    '-.ro', %GMM2
+    '-g*', %L-BFGS
+    '-mv' %CG    
+    };
+
+SS = {
+'GMM$_1$',
+'QPS-Diagonale1',
+'QPS-Diagonale2',
+'GMM$_3$',
+'QPS-Diagonale4',
+'QPS-Diagonale5',
+'QPS-Diagonale6',
+'QPS-Diagonale7',
+'QPS-Diagonale8',
+'QPS-Newton',
+'GMM$_2$',
+'L-BFGS$_{scipy}$',
+'CG$_{scipy}$'
+};
+
 confronti = {[4,12], [5,12], [11,12], [1,12]};
 confronti = {[4,13], [5,13], [11,13], [1,13], [11,1]};
 confronti = {[4,13], [11,1]};
 confronti = {[4,13,11,1,12],[11,12]};
 %confronti = {[2,3,4,5,6,7,8,9]};
 confronti = {[9,13]};
+
 confronti = {[1,11,4,13]};
 confronti = {[1,11,4,12]};
 confronti = {[11,12]};
 
 nc = size(confronti,2);
 
-figure('Position',[0,0,1000,1000])
+figure('Position',[0,0,2000,1000])
 i = 1;
 for pp = confronti
     pair = pp{1};
-    subplot(2,nc,i);
-    perf_profile(Htime(:,pair),SS(pair),'Time')
-    subplot(2,nc,nc+i)
-    perf_profile(Hiter(:,pair),SS(pair),'Iter')
+    subplot(nc,2,i);
+    perf_profile(Htime(:,pair),SS(pair),'Time',LS(pair))
+    subplot(nc,2,i+1)
+    perf_profile(Hiter(:,pair),SS(pair),'Iter',LS(pair))
     i = i+1;
 end
 
-figure('Position',[0,0,1000,1000])
+figure('Position',[0,0,2000,1000])
 i = 1;
 for pp = confronti
     pair = pp{1};
@@ -201,14 +234,14 @@ for pp = confronti
         end
     
     end
-    subplot(2,nc,i);
-    perf_profile(Htime(I,pair),SS(pair),'Time')
-    subplot(2,nc,nc+i)
-    perf_profile(Hiter(I,pair),SS(pair),'Iter')
+    subplot(nc,2,i);
+    perf_profile(Htime(I,pair),SS(pair),'Time',LS(pair))
+    subplot(nc,2,i+1)
+    perf_profile(Hiter(I,pair),SS(pair),'Iter',LS(pair))
     i = i+1;
     nu = size(I,2);
     for p = 1:size(pair,2)
-        fprintf("%20s wins on %3d/%3d\n",S(pair(p)),nbest(1,p),np)
+        fprintf("%20s wins on %3d/%3d\n",SS{pair(p)},nbest(1,p),np)
     end
     %fprintf("%20s wins on %3d/%3d\n",S(pair(1)),nbest,np)
     %fprintf("%20s wins on %3d/%3d\n",S(pair(2)),np-nu-nbest,np)

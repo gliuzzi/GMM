@@ -1,4 +1,4 @@
-function perf_profile(H,solvers,Title)
+function perf_profile(H,solvers,Title,linest)
 
 [np,ns] = size(H); % Grab the dimensions
 
@@ -8,10 +8,6 @@ function perf_profile(H,solvers,Title)
 T = H;
 
 %T(find(T <= 1.e-12)) = 1.e-6;
-
-% Other colors, lines, and markers are easily possible:
-colors  = ['b' 'r' 'k' 'm' 'c' 'g' 'y'];   lines   = {'-' '-.' '--'};
-markers = [ 's' 'o' '^' 'v' 'p' '<' 'x' 'h' '+' 'd' '*' '<' ];
 
 % Compute ratios and divide by smallest element in each row.
 r = T./repmat(min(T,[],2),1,ns);
@@ -24,6 +20,10 @@ r(isnan(r)) = 2*max_ratio;
 r = sort(r);
 
 max_ratio;
+
+% Other colors, lines, and markers are easily possible:
+colors  = ['b' 'r' 'k' 'm' 'c' 'g' 'y'];   lines   = {'-' '-.' '--'};
+markers = [ 's' 'o' '^' 'v' 'p' '<' 'x' 'h' '+' 'd' '*' '<' ];
 
 %ax(1) = axes('Position',[0.1 0.1 0.5 0.8]);
 % Plot stair graphs with markers.
@@ -39,7 +39,7 @@ for s = 1:ns
 
     sl = mod(s-1,3) + 1; sc = mod(s-1,7) + 1; sm = mod(s-1,12) + 1;
     option1 = [char(lines(sl)) colors(sc) markers(sm)];
-    hl(s) = semilogx(xs,ys,option1);
+    hl(s) = semilogx(xs,ys,linest{s});
     %hl(s) = plot(xs,ys,option1);
     hold on;
 end
