@@ -80,7 +80,7 @@ class der_free_method:
 
 		#z = [a for a in x]
 		z = np.copy(x)
-
+		print('bl=',bl)
 		gamma = 1.e-6
 		delta =0.5
 		delta1=0.5
@@ -290,7 +290,6 @@ class der_free_method:
 
 			if iprint >= 1:
 				print(' alfainiz(%d)=%e' % (i,alfa_d[i]))
-
 		alfa_max = max(alfa_d)
 		f   = self.funct(x)
 		nf += 1
@@ -307,27 +306,27 @@ class der_free_method:
 	#---------------------------
 	#     main loop
 	#---------------------------
-
 		for ni in range(1,maxiter+1):
 
-			if iprint >= 0:
-				print(format100 % (ni,nf,f,alfa_max,ab[0],ab[1]))
-
+			#if iprint >= 0:
+			if True:
+			    print(format100 % (ni,nf,f,alfa_max,x[0],x[1]))
+			    input()
+				
 	#-------------------------------------
 	#    sampling along coordinate i_corr
 	#-------------------------------------
+			print('bl prima=',bl)
 			alfa, fz, nf, i_corr_fall = self.linesearchbox_cont(n,x,f,d,alfa_d,i_corr,alfa_max,iprint,bl,bu,nf)
 
 			if abs(alfa) >= 1.e-12:
-				flag_fail[i_corr-1] = 0
-				x[i_corr-1] = x[i_corr-1] + alfa*d[i_corr-1]
-				f = fz
-				fstop[i_corr-1] = f
-				num_fal = 0
-				ni += 1
-
+			    flag_fail[i_corr-1] = 0
+			    x[i_corr-1] = x[i_corr-1] + alfa*d[i_corr-1]
+			    f = fz
+			    fstop[i_corr-1] = f
+			    num_fal = 0
+			    ni += 1
 			else:
-
 				flag_fail[i_corr-1] = 1
 				if i_corr_fall < 2:
 					fstop[i_corr-1] = fz

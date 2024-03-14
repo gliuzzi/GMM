@@ -745,13 +745,14 @@ class Solver:
                     if prova:
                         ab = self.quadratic_plane_search_prova(xk, xk_1, f, f_1, g, alpha, beta)
                     else:
-                        ab,fExp = self.quadratic_plane_search_Armijo(xk, xk_1, f, f_1, g, alpha, beta)
+                        #ab,fExp = self.quadratic_plane_search_Armijo(xk, xk_1, f, f_1, g, alpha, beta)
+                        ab = self.quadratic_plane_search(xk, xk_1, f, f_1, g, alpha, beta)
 
                     #if (ab[0] < 1.e-12):
                     #    ab[0] = 1.e-12
                     #    # print('alfa piccolo')
                     #    fExp = self.f(xk - ab[0] * g + ab[1] * (xk - xk_1))
-                    #fExp = self.f(xk-ab[0]*g+ab[1]*(xk-xk_1))
+                    fExp = self.f(xk-ab[0]*g+ab[1]*(xk-xk_1))
                 if fExp < f:
                     alpha, beta = ab[0], ab[1]
                     aArm = max(np.abs(alpha), 10*self.min_step)
@@ -1596,7 +1597,7 @@ solvers = ['NESTEROV']
 solvers = ['NESTEROV','NESTEROV-bs_dfbox', 'NESTEROV-bs_lbfgs', 'scipy_lbfgs']
 solvers = ['QPS', 'QPS-Newton', 'scipy_lbfgs', 'scipy_cg']
 solvers = ['NESTEROV-tri_NM']
-solvers = ['QPS', 'QPS-Newton']
+solvers = ['QPS', 'QPS-Newton', 'scipy_lbfgs']
 
 eps_grad = 1e-3
 
@@ -1690,8 +1691,6 @@ problems = ['ARWHEAD','BDQRTIC','BROYDN7D','BRYBND','CHAINWOO','CLPLATEB','CLPLA
             'NCB20','NCB20B','NLMSURF','NONCVXU2','NONCVXUN','NONDIA','NONDQUAR','ODC','PENALTY1','PENALTY2','PENALTY3','POWELLSG',
             'POWER','QUARTC','RAYBENDL','RAYBENDS','SCHMVETT','SCOSINE','SENSORS','SPARSINE','SPARSQUR','SROSENBR','SSC','TESTQUAD',
             'TOINTGSS','TQUARTIC','TRIDIA','VARDIM','VAREIGVL','WOODS']
-
-problems = ['CHAINWOO']
 
 #problems = ['BA-L16LS','BA-L21LS','BA-L49LS','BA-L52LS','BA-L73LS']
 

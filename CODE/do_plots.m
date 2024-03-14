@@ -15,12 +15,10 @@ close all
 %T = T(1:291,:);
 %T = readtable("risultati-tutti-new.txt","delimiter",'|');
 %T = T(1:915,:);
-T = readtable("risultati-tot-7-new.txt","delimiter",'|');
-T = T(1:1464,:);
-%T = readtable("risultati-tot-7-norm.txt","delimiter",'|');
+%T = readtable("risultati-tot-7.txt","delimiter",'|');
 %T = T(1:1464,:);
-%T = readtable("risultati.txt","delimiter",'|');
-%T = T(1:1464,:);
+T = readtable("ris_20231206.txt","delimiter",'|');
+T = T(1:2282,:);
 
 %%%
 % le colonne di T sono le seguenti:
@@ -54,6 +52,22 @@ for row = 1:rows
     disp(name)
 end   
 
+SS = {
+'$QPS_1$',
+'QPS-Diagonale1',
+'QPS-Diagonale2',
+'$QPS_3$',
+'QPS-Diagonale4',
+'QPS-Diagonale5',
+'QPS-Diagonale6',
+'QPS-Diagonale7',
+'QPS-Diagonale8',
+'QPS-Newton',
+'$QPS_2$',
+'$lBFGS_{scipy}$',
+'$CG_{scipy}$'
+};
+
 % get problem names
 P = {};
 lastp = "";
@@ -73,138 +87,133 @@ end
 [~, ns] = size(S);
 [~, np] = size(P);
 
-fprintf('\n');
-fprintf('Found %3d problems\n',np);
-fprintf('Found %3d  solvers. They are:\n',ns);
-for i = 1:ns
-    fprintf('\t %3d : %s\n',i,S{i});
-end
-fprintf('\n');
+%keyboard
 
-reply = input('Is this ok? Y/N [Y]','s');
-if isempty(reply)
-    reply = 'Y';
-end
-if reply == 'Y'
+Htime = zeros(np,ns);
+Hiter = zeros(np,ns);
+Hfval = zeros(np,ns);
+Hgrad = zeros(np,ns);
 
-    Htime = zeros(np,ns);
-    Hiter = zeros(np,ns);
-    Hfval = zeros(np,ns);
-    Hgrad = zeros(np,ns);
-
-    ip = 1;
-    is = 1;
-    for row = 1:rows
-        solver = string(T.Var2(row));
-        problem = string(T.Var3(row));
-        if solver == "--"
-            continue
-        end
-        ip = find(ismember(P,problem));
-        is = find(ismember(S,solver));
-        Hfval(ip,is) = T.Var7(row);
-        Hgrad(ip,is) = T.Var8(row);
-        if T.Var8(row) <= 1.e-3
-            Htime(ip,is) = T.Var5(row);
-            Hiter(ip,is) = T.Var6(row);
-        else 
-            Htime(ip,is) = nan;
-            Hiter(ip,is) = nan;
-        end
+ip = 1;
+is = 1;
+for row = 1:rows
+    solver = string(T.Var2(row));
+    problem = string(T.Var3(row));
+    if solver == "--"
+        continue
     end
-
-    Istaz = [];
-    I = [];
-    QPS = 0;
-    LBFGS = 0;
-    for ip = 1:np
-        bestf = min(Hfval(ip,:));
-        worsf = max(Hfval(ip,:));
-        %for is = 1:ns
-        %    if Hgrad(ip,is) > 1.e-3 && Hfval(ip,is) > bestf + 1.e-3(worsf-bestf)
-        %        Htime(ip,is) = nan;
-        %        Hiter(ip,is) = nan;
-        %    end
-        %end
-
-        if not(Hgrad(ip,6) <= 1.e-3)
-            LBFGS = LBFGS +1;
-        end
-        if not(Hgrad(ip,4) <= 1.e-3)
-            disp(P(ip));
-            QPS = QPS +1;
-        end
-
-        if max(Hfval(ip,:)) - min(Hfval(ip,:)) < 1.e-3
-            I = [I ip];
-        else
-            %if (Hfval(ip,2) < Hfval(ip,3))
-            %    fprintf("%15s %15.6e %15.6e %15.6e %15.6e ** \n",P(ip),Hfval(ip,1),Hfval(ip,2),Hfval(ip,3),Hfval(ip,4));        
-            %else
-            %    fprintf("%15s %15.6e %15.6e %15.6e %15.6e \n",P(ip),Hfval(ip,1),Hfval(ip,2),Hfval(ip,3),Hfval(ip,4));        
-            %end
-        end
-
+    ip = find(ismember(P,problem));
+    is = find(ismember(S,solver));
+    Hfval(ip,is) = T.Var7(row);
+    Hgrad(ip,is) = T.Var8(row);
+    if T.Var8(row) <= 1.e-3
+        Htime(ip,is) = T.Var5(row);
+        Hiter(ip,is) = T.Var6(row);
+    else 
+        Htime(ip,is) = nan;
+        Hiter(ip,is) = nan;
     end
+end
 
-    disp(QPS)
-    disp(LBFGS)
+Istaz = [];
+I = [];
+QPS = 0;
+LBFGS = 0;
+for ip = 1:np
+    bestf = min(Hfval(ip,:));
+    worsf = max(Hfval(ip,:));
+    %for is = 1:ns
+    %    if Hgrad(ip,is) > 1.e-3 && Hfval(ip,is) > bestf + 1.e-3(worsf-bestf)
+    %        Htime(ip,is) = nan;
+    %        Hiter(ip,is) = nan;
+    %    end
+    %end
 
-    for i = 1:ns
-        S{i} = strrep(S{i},'_','\_');
+    if not(Hgrad(ip,6) <= 1.e-3)
+        LBFGS = LBFGS +1;
+    end
+    if not(Hgrad(ip,4) <= 1.e-3)
+        QPS = QPS +1;
     end
     
-    if 0
-        figure()
-        subplot(2,3,1);
-        perf_profile(Htime(:,[2,6]),S([2,6]),'Time')
-        subplot(2,3,2);
-        perf_profile(Htime(:,[4,6]),S([4,6]),'Time')
-        subplot(2,3,3);
-        perf_profile(Htime(:,[2,4]),S([2,4]),'Time')
-        subplot(2,3,4);
-        perf_profile(Hiter(:,[2,6]),S([2,6]),'Time')
-        subplot(2,3,5);
-        perf_profile(Hiter(:,[4,6]),S([4,6]),'Time')
-        subplot(2,3,6);
-        perf_profile(Hiter(:,[2,4]),S([2,4]),'Time')
-
-        figure()
-        subplot(1,2,1);
-        perf_profile(Htime(:,[5,7]),S([5,7]),'Time')
-        subplot(1,2,2);
-        perf_profile(Hiter(:,[5,7]),S([5,7]),'Iter')
-
-
-        figure()
-        subplot(2,3,1);
-        perf_profile(Htime(I,[2,1]),S([2,1]),'Time')
-        subplot(2,3,2);
-        perf_profile(Htime(I,[2,3]),S([2,3]),'Time')
-        subplot(2,3,3);
-        perf_profile(Htime(I,[2,4]),S([2,4]),'Time')
-
-        subplot(2,3,4);
-        perf_profile(Hiter(I,[2,1]),S([2,1]),'Iter')
-        subplot(2,3,5);
-        perf_profile(Hiter(I,[2,3]),S([2,3]),'Iter')
-        subplot(2,3,6);
-        perf_profile(Hiter(I,[2,4]),S([2,4]),'Iter')
-
-        figure()
-        subplot(1,2,1);
-        perf_profile(Htime,S,'Time')
-
-        subplot(1,2,2);
-        perf_profile(Hiter,S,'Iter')
-
-        figure()
-        subplot(1,2,1);
-        perf_profile(Htime(I,:),S,'Time')
-
-        subplot(1,2,2);
-        perf_profile(Hiter(I,:),S,'Iter')
+    if max(Hfval(ip,:)) - min(Hfval(ip,:)) < 1.e-3
+        I = [I ip];
+    else
+        %if (Hfval(ip,2) < Hfval(ip,3))
+        %    fprintf("%15s %15.6e %15.6e %15.6e %15.6e ** \n",P(ip),Hfval(ip,1),Hfval(ip,2),Hfval(ip,3),Hfval(ip,4));        
+        %else
+        %    fprintf("%15s %15.6e %15.6e %15.6e %15.6e \n",P(ip),Hfval(ip,1),Hfval(ip,2),Hfval(ip,3),Hfval(ip,4));        
+        %end
     end
-    perf_profile(Htime(:,[4,7]),S([4,7]),'Time')
 
+end
+
+%keyboard
+disp(QPS)
+disp(LBFGS)
+
+confronti = {[4,12], [5,12], [11,12], [1,12]};
+confronti = {[4,13], [5,13], [11,13], [1,13], [11,1]};
+confronti = {[4,13], [11,1]};
+confronti = {[4,13,11,1,12],[11,12]};
+%confronti = {[2,3,4,5,6,7,8,9]};
+confronti = {[9,13]};
+confronti = {[1,11,4,13]};
+confronti = {[1,11,4,12]};
+confronti = {[11,12]};
+
+nc = size(confronti,2);
+
+figure('Position',[0,0,1000,1000])
+i = 1;
+for pp = confronti
+    pair = pp{1};
+    subplot(2,nc,i);
+    perf_profile(Htime(:,pair),SS(pair),'Time')
+    subplot(2,nc,nc+i)
+    perf_profile(Hiter(:,pair),SS(pair),'Iter')
+    i = i+1;
+end
+
+figure('Position',[0,0,1000,1000])
+i = 1;
+for pp = confronti
+    pair = pp{1};
+    I = [];
+    %nbest = 0;
+    nbest = zeros(1,size(pair,2));
+    for ip = 1:np
+        bestf = min(Hfval(ip,pair));
+        worsf = max(Hfval(ip,pair));
+    
+        if worsf - bestf < 1.e-3
+            I = [I ip];
+        else
+            [v,ind] = min(Hfval(ip,pair));
+            for ii = 1:size(pair,2)
+                if abs(v-Hfval(ip,pair(ii))) < 1.e-3
+                    nbest(1,ii) = nbest(1,ii)+1;
+                end
+            end
+            %if(Hfval(ip,pair(1)) < Hfval(ip,pair(2)))
+            %    nbest = nbest+1;
+            %end
+        end
+    
+    end
+    subplot(2,nc,i);
+    perf_profile(Htime(I,pair),SS(pair),'Time')
+    subplot(2,nc,nc+i)
+    perf_profile(Hiter(I,pair),SS(pair),'Iter')
+    i = i+1;
+    nu = size(I,2);
+    for p = 1:size(pair,2)
+        fprintf("%20s wins on %3d/%3d\n",S(pair(p)),nbest(1,p),np)
+    end
+    %fprintf("%20s wins on %3d/%3d\n",S(pair(1)),nbest,np)
+    %fprintf("%20s wins on %3d/%3d\n",S(pair(2)),np-nu-nbest,np)
+    %disp(S(pair))
+    %disp(size(I))
+    %disp([S(pair(1))," is best on ", num2str(nbest)])
+    %disp([S(pair(2))," is best on ", num2str(np-nu-nbest)])
 end

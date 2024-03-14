@@ -86,7 +86,6 @@ class Solver:
         self.method = method
         self.fevals = 0
         self.gevals = 0
-        self.nnegeig = 0
         self.problem = problem
         self.alpha0 = alpha0 
         self.gamma=gamma 
@@ -103,6 +102,8 @@ class Solver:
         self.gtol_ord = gtol_ord
         self.min_sample_val = 1e-8
         self.recovery_steps = recovery_steps
+
+
 
     def set_solver(self,method):
         self.method = method
@@ -404,7 +405,7 @@ class Solver:
             f_1, g_1 = f, g
             xk = new_x
             n_iters += 1
-        return xk, {"iters": n_iters, "f": f, "g_norm": g_norm, "nfails": num_fails, "nnegeig": self.nnegeig, "cosmax": cosmax}
+        return xk, {"iters": n_iters, "f": f, "g_norm": g_norm, "nfails": num_fails, "cosmin": cosmin, "cosmax": cosmax}
 
     def solvePlaneSearch_roma(self, iterative=False):
         xk = self.problem.get_x0()
@@ -468,7 +469,7 @@ class Solver:
             f_1, g_1 = f, g
             xk = new_x
             n_iters += 1
-        return xk, {"iters": n_iters, "f": f, "g_norm": g_norm, "nfails": num_fails, "nnegeig": self.nnegeig, "cosmax": cosmax}
+        return xk, {"iters": n_iters, "f": f, "g_norm": g_norm, "nfails": num_fails, "cosmin": cosmin, "cosmax": cosmax}
 
     def solvePlaneSearch_CG(self, iterative=False):
         xk = self.problem.get_x0()
@@ -534,7 +535,7 @@ class Solver:
             f_1, g_1 = f, g
             xk = new_x
             n_iters += 1
-        return xk, {"iters": n_iters, "f": f, "g_norm": g_norm, "nfails": num_fails, "nnegeig": self.nnegeig, "cosmax": cosmax}
+        return xk, {"iters": n_iters, "f": f, "g_norm": g_norm, "nfails": num_fails, "cosmin": cosmin, "cosmax": cosmax}
 
     def solvePlaneSearch(self, iterative=False, prova=False):
         xk = self.problem.get_x0()
@@ -585,7 +586,7 @@ class Solver:
             f_1, g_1 = f, g
             xk = new_x
             n_iters += 1
-        return xk, {"iters": n_iters, "f": f, "g_norm": g_norm, "nfails": num_fails, "nnegeig": self.nnegeig, "cosmax": "--"}
+        return xk, {"iters": n_iters, "f": f, "g_norm": g_norm, "nfails": num_fails, "cosmin": "--", "cosmax": "--"}
 
     def CGlike_search(self, xk, f, f_1, g, g_1):
         ab = np.zeros(2)
@@ -596,7 +597,6 @@ class Solver:
         alpha0 = gnrm2 / (g.dot(Hg))
         beta0 = gnrm2 / g_1.dot(g_1)
         return np.array([alpha0,beta0])
-
     def quadratic_plane_search_prova(self, xk, xk_1, f, f_1, g, alpha, beta):
         # find quadratic approximating function and find d by solving system
         # Hd = -g
@@ -636,10 +636,10 @@ class Solver:
         #rhs = [self.f(xk+delta*d1)-f-gab[0]*delta]
         A = [0.5*delta**2, 0.5*delta**2, delta*delta]
         rhs = [self.f(xk+delta*d1+delta*d2)-f-gab[0]*delta-gab[1]*delta]
-        A = np.vstack((A,[0.5*delta**2, 0.5*delta**2, -delta*delta]))
-        rhs = np.vstack((rhs,[self.f(xk-delta*d1+delta*d2)-f+gab[0]*delta-gab[1]*delta]))
+        #A = np.vstack((A,[0.5*delta**2, 0.5*delta**2, delta*delta]))
+        #rhs = np.vstack((rhs,[self.f(xk+delta*d1+delta*d2)-f-gab[0]*delta-gab[1]*delta]))
         A = np.vstack((A,[0.0, 0.5, 0.0]))
-        rhs = np.vstack((rhs,[f_1-f+gab[1]]))
+        rhs = np.vstack((rhs,[f_1-f-gab[0]*delta-gab[1]*delta]))
         #A = np.vstack((A,[0.0, 0.5*delta**2, 0.0]))
         #rhs = np.vstack((rhs,[self.f(xk+delta*d2)-f-gab[1]*delta]))
         if False:
@@ -690,19 +690,6 @@ class Solver:
             input()
 
         Bab = np.array([[ba, bb], [bb, bc]])
-        try:
-            EIGV, EIGW = np.linalg.eig(Bab)
-        except np.linalg.LinAlgError:
-            print(A)
-            print(rhs)
-            print(Bab)
-            EIGV = np.zeros(2)
-            input()
-
-        if min(EIGV) < 0:
-            #print(EIGV)
-            self.nnegeig += 1
-            #input()
         #Bab = np.array([[ba1, bb1], [bb1, bc1]])
 
         try:
@@ -730,17 +717,13 @@ class Solver:
         fC = self.f(xk+alpha*d1+beta*d2)
         fD = self.f(xk+alpha*d1)
 
+
         bc = 2*(gab[1]+fB-fA)
         ba = 2/(alpha**2)*(fD-alpha*gab[0]-fA)
         bb = (fC-fA-gab[0]*alpha-gab[1]*beta-0.5*alpha*alpha*ba-0.5*beta*beta*bc)/(alpha*beta)
 
         Bab = np.array([[ba,bb],[bb,bc]])
-        EIGV, EIGW = np.linalg.eig(Bab)
-        if min(EIGV) < 0:
-            #print(EIGV)
-            self.nnegeig += 1
-            #input()
-
+        
         try:
             solution_closed = np.linalg.solve(Bab, -gab)
         except np.linalg.LinAlgError:
@@ -1011,7 +994,7 @@ class Solver:
 
             if 'nfails' in info:
                 res_tab.append([solver, self.problem.name, self.problem.n, info['time'], info['iters'], info['f'], info['g_norm'],
-                                info['fevals'], info['gevals'], info['nfails'], info['nnegeig'], info['cosmax']])
+                                info['fevals'], info['gevals'], info['nfails'], info['cosmin'], info['cosmax']])
             else:
                 res_tab.append(
                     [solver, self.problem.name, self.problem.n, info['time'], info['iters'], info['f'], info['g_norm'], info['fevals'],
@@ -1084,18 +1067,18 @@ for p in problems:
     r=["--", "--", "--", "--", "--", "--", "--", "--", "--", "--", "--", "--"]
     res_tutti.append(r)		
     print(tabulate(res_parz, headers=['Algorithm', 'prob', 'n', 't', 'n_it', 'f_opt',
-                               'g_norm', 'fevals', 'gevals', 'nfails', 'nnegeig', 'cosmax'], tablefmt='orgtbl')
+                               'g_norm', 'fevals', 'gevals', 'nfails', 'cosmin', 'cosmax'], tablefmt='orgtbl')
           )
 
 table = tabulate(res_tutti, headers=['Algorithm','prob', 'n', 't', 'n_it', 'f_opt',
-    'g_norm', 'fevals', 'gevals', 'nfails', 'nnegeig', 'cosmax'], tablefmt = 'orgtbl')
+    'g_norm', 'fevals', 'gevals', 'nfails', 'cosmin', 'cosmax'], tablefmt = 'orgtbl')
 print(table)
 print(table)
 fr=open("risultati.txt","w")
 print(table,file=fr)
 fr.close()
 table = tabulate(res_tutti, headers=['Algorithm','prob', 'n', 't', 'n_it', 'f_opt',
-    'g_norm', 'fevals', 'gevals', 'nfails', 'nnegeig', 'cosmax'], tablefmt = 'latex')
+    'g_norm', 'fevals', 'gevals', 'nfails', 'cosmin', 'cosmax'], tablefmt = 'latex')
 print(table)
 
 '''

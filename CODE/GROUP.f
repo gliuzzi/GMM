@@ -7,7 +7,7 @@
       INTEGER ITYPEG(LTYPEG), ISTGPA(LSTGPA), ICALCG(LCALCG)
       DOUBLE PRECISION GVALUE(LGVALU,3), FVALUE(LFVALU), GPVALU(LGPVLU)
 C
-C  Problem name : ARGLINA   
+C  Problem name : PRICE3    
 C
 C  -- produced by SIFdecode 1.0
 C
