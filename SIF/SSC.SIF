@@ -1,0 +1,235 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          SSC
+
+*   Problem :
+*   *********
+
+*   Steady-State Combustion: a problem arising in the study of steady-state
+*   fuel ignition models. 
+
+*   Source: 
+*   B. Averick and J.J. More',
+*   "Evaluation of Large-Scale Optimization Problems on Vector and Parallel
+*   Architectures ",
+*   Report MCS-P379-0893, Mathematics and Computer Science Division,
+*   Argonne National Laboratory, 1993.
+
+*   SIF input: Ph. Toint, Nov 1993
+
+*   classification OXR2-MY-V-0
+
+*   NX is the number of interior points along the X axis, NY that of
+*   interior points along the Y axis.
+*   The number of free variables is NX * NY
+
+*IE NX                  2              $-PARAMETER  n = 4
+*IE NY                  2              $-PARAMETER
+
+*IE NX                  10             $-PARAMETER  n = 100  original value
+*IE NY                  10             $-PARAMETER           original value
+
+*IE NX                  31             $-PARAMETER  n = 992
+*IE NY                  32             $-PARAMETER
+
+ IE NX                  70             $-PARAMETER  n = 4900
+ IE NY                  70             $-PARAMETER
+
+*IE NX                  100            $-PARAMETER  n = 10000
+*IE NY                  100            $-PARAMETER
+
+*IE NX                  200            $-PARAMETER  n = 40000
+*IE NY                  200            $-PARAMETER
+
+ RE LAMBDA              2.0            $-PARAMETER
+
+*   Define a few helpful parameters
+
+ IA NX+1      NX        1
+ IA NY+1      NY        1
+
+ RI RNX+1     NX+1
+ RD HX        RNX+1     1.0
+ RI RNY+1     NY+1
+ RD HY        RNY+1     1.0
+ R/ HY/HX     HY                       HX
+ R/ HX/HY     HX                       HY
+ RM HY/4HX    HY/HX     0.25
+ RM HX/4HY    HX/HY     0.25
+ R* HXHY      HX                       HY
+ R* LHXHY     LAMBDA                   HXHY
+ RE SIX                 6.0
+ RD -1/6      SIX       -1.0
+ R* -LHXHY/6  LHXHY                    -1/6
+
+ IE 0                   0
+ IE 1                   1
+
+VARIABLES
+
+*   Define one variable per discretized point in the unit square
+
+ DO I         0                        NX+1
+ DO J         0                        NY+1
+ X  X(I,J)
+ OD J
+ OD I
+
+GROUPS
+
+*   Lower triangles
+
+ DO I         0                        NX
+ DO J         0                        NY
+ ZN FL(I,J)
+ ND
+
+*   Upper triangles
+
+ DO I         1                        NX+1
+ DO J         1                        NY+1
+ ZN FU(I,J)
+ ND
+
+BOUNDS
+
+ FR SSC       'DEFAULT'
+
+*   Zero on the boundary
+
+ DO I         0                        NX+1
+ XX SSC       X(I,0)    0.0
+ XX SSC       X(I,NY+1) 0.0
+ OD I
+
+ DO J         1                        NY
+ XX SSC       X(0,J)    0.0
+ XX SSC       X(NX+1,J) 0.0
+ OD J
+
+ELEMENT TYPE
+
+ EV ISQ       V1                       V2
+ IV ISQ       U
+
+ EV EXP       V
+
+ELEMENT USES
+
+*   Lower triangles
+
+ DO I         0                        NX
+ IA I+1       I         1
+ DO J         0                        NY
+ IA J+1       J         1
+
+ XT A(I,J)    ISQ
+ ZV A(I,J)    V1                       X(I+1,J)
+ ZV A(I,J)    V2                       X(I,J)
+
+ XT B(I,J)    ISQ
+ ZV B(I,J)    V1                       X(I,J+1)
+ ZV B(I,J)    V2                       X(I,J)
+
+ OD J
+ OD I
+
+*   Upper triangles
+
+ DO I         1                        NX+1
+ IA I-1       I         -1 
+ DO J         1                        NY+1
+ IA J-1       J         -1
+
+ XT C(I,J)    ISQ
+ ZV C(I,J)    V1                       X(I-1,J)
+ ZV C(I,J)    V2                       X(I,J)
+
+ XT D(I,J)    ISQ
+ ZV D(I,J)    V1                       X(I,J-1)
+ ZV D(I,J)    V2                       X(I,J)
+
+ OD J
+ OD I
+
+*   Exponentials
+
+ DO I         0                        NX+1
+ DO J         0                        NY+1
+ XT E(I,J)    EXP
+ ZV E(I,J)    V                        X(I,J)
+ OD J
+ OD I
+
+GROUP USES
+
+*   Lower triangles
+
+ DO I         0                        NX
+ IA I+1       I         1
+ DO J         0                        NY
+ IA J+1       J         1
+ ZE FL(I,J)   A(I,J)                   HY/4HX
+ ZE FL(I,J)   B(I,J)                   HX/4HY
+ ZE FL(I,J)   E(I,J)                   -LHXHY/6
+ ZE FL(I,J)   E(I+1,J)                 -LHXHY/6
+ ZE FL(I,J)   E(I,J+1)                 -LHXHY/6
+ OD J
+ OD I
+
+*   Upper triangles
+
+ DO I         1                        NX+1
+ IA I-1       I         -1
+ DO J         1                        NY+1
+ IA J-1       J         -1
+ ZE FU(I,J)   C(I,J)                   HY/4HX
+ ZE FU(I,J)   D(I,J)                   HX/4HY
+ ZE FU(I,J)   E(I,J)                   -LHXHY/6
+ ZE FU(I,J)   E(I-1,J)                 -LHXHY/6
+ ZE FU(I,J)   E(I,J-1)                 -LHXHY/6
+ OD J
+ OD I
+
+OBJECT BOUND
+
+*   Solution
+
+*LO SOLTN(10,10)       -2.0763D+00
+*LO SOLTN(31,32)       -2.07799325
+*LO SOLTN(100,100)     
+*LO SOLTN(200,200)     
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      SSC
+
+TEMPORARIES
+
+ R  EV
+
+ M  EXP
+
+INDIVIDUALS
+
+ T  ISQ
+ R  U         V1        1.0            V2        -1.0
+ F                      U * U
+ G  U                   U + U
+ H  U         U         2.0
+
+ T  EXP
+ A  EV                  EXP( V )
+ F                      EV
+ G  V                   EV
+ H  V         V         EV
+
+ENDATA
+

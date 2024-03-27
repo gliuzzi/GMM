@@ -1,0 +1,291 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          TESTQUAD 
+
+*   Problem :
+*   *********
+
+*   This is a diagonal quadratic function of N variables in which 
+*   considerable control over the spectrum is possible. The 
+*   eigenvalues vary from 1 to COND. There are three clusters 
+*   containing CLUSTERL, CLUSTERM and CLUSTERU eigenvalues respectively.
+*   The lower cluster of CLUSTERL eigenvalues are uniformly distributed
+*   between 1 and UPPERL, the middle cluster of CLUSTERM eigenvalues are 
+*   uniformly distributed between LOWERM and UPPERM and the upper cluster 
+*   of CLUSTERU eigenvalues are uniformly distributed LOWERU and COND.
+*   The remaining eigenvalues are uniformly spaced between 1 and COND.
+
+*   Source: 
+*   Nick Gould, private communication.
+
+*   SIF input: Nick Gould, October, 1993
+
+*   classification QUR2-AN-V-0
+
+*   Constants
+
+ IE 1                   1
+ IE -1                  -1
+ RE ONE                 1.0
+ IE 3                   3
+ IE 4                   4
+
+*   Problem variants: they are identified by the values of N, CLUSTERL, 
+*   CLUSTERM, CLUSTERU, UPPERL, LOWERM, UPPERM, LOWERU and COND.
+
+*   The relationships,
+*   0 <= CLUSTERL + CLUSTERM + CLUSTERU <= N and
+*   1 <= UPPERL <= LOWERM <= UPPERM <= LOWERU <= COND
+*   should be satisfied
+
+*IE N                   1000           $-PARAMETER      original value
+ IE N                   5000           $-PARAMETER
+
+*  Case 1: 
+
+ I/ CLUSTERL  N                        4
+ I/ CLUSTERM  N                        4
+ I/ CLUSTERU  N                        4
+
+
+ RE UPPERL              10.0
+ RE LOWERM              499995.0
+ RE UPPERM              500005.0
+ RE LOWERU              999990.0
+ RE COND                1000000.0
+
+*  Case 2: 
+
+*IE CLUSTERL            0
+*IE CLUSTERM            0
+*IE CLUSTERU            0
+
+*RE UPPERL              100.0
+*RE LOWERM              499995.0
+*RE UPPERM              500005.0
+*RE LOWERU              999901.0
+*RE COND                1000000.0
+
+*  Case 3: 
+
+*I/ CLUSTERL  N                        3
+*I/ CLUSTERM  N                        3
+*I/ CLUSTERU  N                        3
+
+*RE UPPERL              10.0
+*RE LOWERM              499995.0
+*RE UPPERM              500005.0
+*RE LOWERU              999990.0
+*RE COND                1000000.0
+
+*  Case 4: 
+
+*I/ CLUSTERL  N                        3
+*I/ CLUSTERM  N                        3
+*I/ CLUSTERU  N                        3
+
+*RE UPPERL              10.0
+*RE LOWERM              49995.0
+*RE UPPERM              50005.0
+*RE LOWERU              999990.0
+*RE COND                1000000.0
+
+*  Case 5: 
+
+*I/ CLUSTERL  N                        3
+*I/ CLUSTERM  N                        3
+*I/ CLUSTERU  N                        3
+
+*RE UPPERL              10.0
+*RE LOWERM              949995.0
+*RE UPPERM              950005.0
+*RE LOWERU              999990.0
+*RE COND                1000000.0
+
+*   Other constants
+
+ IE L1                  1
+ I= U1        CLUSTERL
+ IA L2        U1        1
+ I+ U2        U1                       CLUSTERM
+ IA L3        U2        1
+ I+ U3        U2                       CLUSTERU
+ IA L4        U3        1
+ IA U4        N
+
+ IA L1+1      L1        1
+ IA L2+1      L2        1
+ IA L3+1      L3        1
+ IA L4+1      L4        1
+
+ I- REST-1    U4                       L4
+ IA CL-1      CLUSTERL  -1
+ IA CM-1      CLUSTERM  -1
+ IA CU-1      CLUSTERU  -1
+
+ RI RREST-1   REST-1
+ RI RCL-1     CL-1
+ RI RCM-1     CM-1
+ RI RCU-1     CU-1
+
+ R- COND-1    COND                     ONE
+ R- SIZEL     UPPERL                   ONE
+ R- SIZEM     UPPERM                   LOWERM
+ R- SIZEU     COND                     LOWERU
+
+*   Pseudo-logical parameters
+
+ I- U1-L1     U1                       L1
+ RI RU1-L1    U1-L1
+ R( ARU1-L1   ABS                      RU1-L1
+ R/ RL1<=U1?  RU1-L1                   ARU1-L1
+ RA RL1<=U1?  RL1<=U1?  0.5
+ IR L1<=U1?   RL1<=U1?
+
+ I- U2-L2     U2                       L2
+ RI RU2-L2    U2-L2
+ R( ARU2-L2   ABS                      RU2-L2
+ R/ RL2<=U2?  RU2-L2                   ARU2-L2
+ RA RL2<=U2?  RL2<=U2?  0.5
+ IR L2<=U2?   RL2<=U2?
+
+ I- U3-L3     U3                       L3
+ RI RU3-L3    U3-L3
+ R( ARU3-L3   ABS                      RU3-L3
+ R/ RL3<=U3?  RU3-L3                   ARU3-L3
+ RA RL3<=U3?  RL3<=U3?  0.5
+ IR L3<=U3?   RL3<=U3?
+
+ I- U4-L4     U4                       L4
+ RI RU4-L4    U4-L4
+ R( ARU4-L4   ABS                      RU4-L4
+ R/ RL4<=U4?  RU4-L4                   ARU4-L4
+ RA RL4<=U4?  RL4<=U4?  0.5
+ IR L4<=U4?   RL4<=U4?
+
+VARIABLES
+
+ DO I         1                        N
+ X  X(I)
+ ND
+
+GROUPS
+
+*   Objective function
+
+ N  OBJ
+
+BOUNDS
+
+ FR TESTQUAD  'DEFAULT'
+
+START POINT
+
+    TESTQUAD  'DEFAULT' 1.0
+
+ELEMENT TYPE
+
+ EV ETYPE     V
+ EP ETYPE     P
+
+ELEMENT USES
+
+ XT 'DEFAULT' ETYPE
+
+*  Lower cluster
+
+ DO I         1                        L1<=U1?                  
+ ZV PSQ(L1)   V                        X(L1)
+ ZP PSQ(L1)   P                        ONE
+ ND
+
+ DO I         L1+1                     U1
+ I- J         I                        L1
+ RI RJ        J
+ A/ STEP      SIZEL                    RCL-1
+ A* JSTEP     RJ                       STEP
+ A+ EIGENVAL  ONE                      JSTEP
+ ZV PSQ(I)    V                        X(I)
+ ZP PSQ(I)    P                        EIGENVAL
+ ND
+
+*  Middle cluster
+
+ DO I         1                        L2<=U2?                  
+ ZV PSQ(L2)   V                        X(L2)
+ ZP PSQ(L2)   P                        LOWERM
+ ND
+
+ DO I         L2+1                     U2
+ I- J         I                        L2
+ RI RJ        J
+ A/ STEP      SIZEM                    RCM-1
+ A* JSTEP     RJ                       STEP
+ A+ EIGENVAL  LOWERM                   JSTEP
+ ZV PSQ(I)    V                        X(I)
+ ZP PSQ(I)    P                        EIGENVAL
+ ND
+
+*  Upper cluster
+
+ DO I         1                        L3<=U3?
+ ZV PSQ(L3)   V                        X(L3)
+ ZP PSQ(L3)   P                        LOWERU
+ ND
+
+ DO I         L3+1                     U3
+ I- J         I                        L3
+ RI RJ        J
+ A/ STEP      SIZEU                    RCU-1
+ A* JSTEP     RJ                       STEP
+ A+ EIGENVAL  LOWERU                   JSTEP
+ ZV PSQ(I)    V                        X(I)
+ ZP PSQ(I)    P                        EIGENVAL
+ ND
+
+*  Non clustered eigenvalues
+
+ DO I         1                        L4<=U4?
+ ZV PSQ(L4)   V                        X(L4)
+ ZP PSQ(L4)   P                        ONE
+ ND
+
+ DO I         L4+1                     U4
+ I- J         I                        L4
+ RI RJ        J
+ A/ STEP      COND-1                   RREST-1
+ A* JSTEP     RJ                       STEP
+ A+ EIGENVAL  ONE                      JSTEP
+ ZV PSQ(I)    V                        X(I)
+ ZP PSQ(I)    P                        EIGENVAL
+ ND
+
+GROUP USES
+
+ DO I         1                        N
+ XE OBJ       PSQ(I)
+ ND
+
+OBJECT BOUND
+
+*LO SOLUTION            0.0
+ 
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      TESTQUAD
+
+INDIVIDUALS
+
+ T  ETYPE
+ F                      5.0D-1 * P * V ** 2
+ G  V                   P * V
+ H  V         V         P
+
+ENDATA

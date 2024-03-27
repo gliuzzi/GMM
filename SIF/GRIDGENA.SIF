@@ -1,0 +1,730 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          GRIDGENA
+
+*   Problem:
+*   ********
+
+*   A grid generation problem on an irregular grid,
+*   using Ivanienko functional.
+
+*   The problem is to generate a smooth 2D grid on domains with irregular
+*   boundaries.  The domain considered in this example has the shape
+*
+*               10    +----+    +---------+
+*                     |    |    |         |
+*                8    |    +----+         |
+*                     |              +----+
+*                6    +----+         |
+*                          |         |
+*                4         |         |
+*                          |         +----+
+*                2    +----+              |
+*                     |                   |
+*                0    +-------------------+
+*
+*                     0    2    4    6    8
+*
+*   It is decomposed in 4 successive "vertical" slices, whose limits are
+*
+*       [0, 2] [6, 8]                  (2 parts)
+*       [0, 8]
+*       [0, 10]
+*       [0, 3] [7, 10]                 (2 parts)
+*
+*   Each of these slices has a "width" of 2 units. For the variables
+*   definition and initialisation, one must also consider the special case
+*   of the vertical line at x=2, along which all variables are defined.
+
+
+*   Source:
+*   P. Barrera, A. Perez and L. Castellanos,
+*   "Generacion de Sistemas Coordenados curvilineos Sobre Regiones
+*   Irregulares",
+*   Technical Report, Facultad de Ciencias, UNAM, Mexico, 1991.
+
+*   SIF input: Ph. Toint, April 1992.
+*              correction by Ph. Shott, Jan 1995.
+
+*   classification OBI2-MY-V-0
+
+*   Number of intervals per unit length
+
+*IE NDELTA              1              $-PARAMETER n = 170
+ IE NDELTA              2              $-PARAMETER n = 578    original value
+*IE NDELTA              3              $-PARAMETER n = 1226
+*IE NDELTA              4              $-PARAMETER n = 2114
+*IE NDELTA              5              $-PARAMETER n = 3242
+*IE NDELTA              6              $-PARAMETER n = 4610
+ IE NDELTA              7              $-PARAMETER n = 6218
+*IE NDELTA              10             $-PARAMETER n = 12482
+
+*   Mesh size
+
+ RI RND       NDELTA
+ RD H         RND       1.0
+
+*   Perturbation to the starting point defined by the regular square grid
+
+ RM PERT      H         0.1
+
+*   Useful parameters
+
+ IE 0                   0
+ IE 1                   1
+
+*   Limits of slices: En stands for the End of slice n
+
+ IM E2        NDELTA    2
+ IA E2-1      E2        -1
+ IA E2+1      E2        1
+
+ IM E3        NDELTA    3
+ IA E3-1      E3        -1
+ IA E3+1      E3        1
+
+ IM E4        NDELTA    4
+ IA E4-1      E4        -1
+ IA E4+1      E4        1
+
+ IM E6        NDELTA    6
+ IA E6-1      E6        -1
+ IA E6+1      E6        1
+
+ IM E7        NDELTA    7
+ IA E7-1      E7        -1
+ IA E7+1      E7        1
+
+ IM E8        NDELTA    8
+ IA E8-1      E8        -1
+ IA E8+1      E8        1
+
+ IM E10       NDELTA    10
+ IA E10-1     E10       -1
+
+VARIABLES
+
+*   First vertical slice (2 parts)
+
+ DO J         0                        E2-1
+ DO I         0                        E2
+ X  X(I,J)
+ X  Y(I,J)
+ OD I
+ DO I         E6                       E10
+ X  X(I,J)
+ X  Y(I,J)
+ OD I
+ OD J
+
+*   The vertical line at x=2
+
+ DO I         0                        E10
+ X  X(I,E2)
+ X  Y(I,E2)
+ OD I
+
+*   Second vertical slice
+
+ DO J         E2+1                     E4-1
+ DO I         0                        E8
+ X  X(I,J)
+ X  Y(I,J)
+ OD I
+ OD J
+
+*   Third vertical slice
+
+ DO J         E4                       E6
+ DO I         0                        E10
+ X  X(I,J)
+ X  Y(I,J)
+ OD I
+ OD J
+
+*   Fourth vertical slice (2 parts)
+
+ DO J         E6+1                     E8
+ DO I         0                        E3
+ X  X(I,J)
+ X  Y(I,J)
+ OD I
+ DO I         E7                       E10
+ X  X(I,J)
+ X  Y(I,J)
+ OD I
+ OD J
+
+GROUPS
+
+ XN OBJ
+
+BOUNDS
+
+ UP GRIDGENA  'DEFAULT' 10.0
+
+*   The variables corresponding to the nodes on the domain's boundary
+*   are fixed to the position given by the regular square grid.
+*   This is achieved by fixing the variables on each boundary segment
+*   in turn, proceeding counter-clockwise.
+
+*   Bottom part of the boundary
+
+ DO J         0                        E8
+ RI RJ        J
+ R* X         RJ                       H
+ ZX GRIDGENA  X(0,J)                   X
+ XX GRIDGENA  Y(0,J)    0.0
+ OD J
+
+*   Right side of the boundary
+
+ DO I         1                        E3
+ RI RI        I
+ R* Y         RI                       H
+ XX GRIDGENA  X(I,E8)   8.0
+ ZX GRIDGENA  Y(I,E8)                  Y
+ OD I
+
+ DO J         E6                       E8-1
+ RI RJ        J
+ R* X         RJ                       H
+ ZX GRIDGENA  X(E3,J)                  X
+ XX GRIDGENA  Y(E3,J)   3.0
+ OD J
+
+ DO I         E3+1                     E7
+ RI RI        I
+ R* Y         RI                       H
+ XX GRIDGENA  X(I,E6)   6.0
+ ZX GRIDGENA  Y(I,E6)                  Y
+ OD I
+
+ DO J         E6+1                     E8
+ RI RJ        J
+ R* X         RJ                       H
+ ZX GRIDGENA  X(E7,J)                  X
+ XX GRIDGENA  Y(E7,J)   7.0
+ OD J
+
+ DO I         E8+1                     E10
+ RI RI        I
+ R* Y         RI                       H
+ XX GRIDGENA  X(I,E8)   8.0
+ ZX GRIDGENA  Y(I,E8)                  Y
+ OD I
+
+ DO J         E4                       E8-1
+ RI RJ        J
+ R* X         RJ                       H
+ ZX GRIDGENA  X(E10,J)                 X
+ XX GRIDGENA  Y(E10,J)  10.0
+ OD J
+
+*   Top part of the boundary
+
+ DO I         E8                       E10-1
+ RI RI        I
+ R* Y         RI                       H
+ XX GRIDGENA  X(I,E4)   4.0
+ ZX GRIDGENA  Y(I,E4)                  Y
+ OD I
+
+ DO J         E2                       E4-1
+ RI RJ        J
+ R* X         RJ                       H
+ ZX GRIDGENA  X(E8,J)                  X
+ XX GRIDGENA  Y(E8,J)   8.0
+ OD J
+
+ DO I         E8+1                     E10
+ RI RI        I
+ R* Y         RI                       H
+ XX GRIDGENA  X(I,E2)   2.0
+ ZX GRIDGENA  Y(I,E2)                  Y
+ OD I
+
+ DO J         0                        E2-1
+ RI RJ        J
+ R* X         RJ                       H
+ ZX GRIDGENA  X(E10,J)                 X
+ XX GRIDGENA  Y(E10,J)  10.0
+ OD J
+
+*   Left side of the boundary
+
+ DO I         E6                       E10-1
+ RI RI        I
+ R* Y         RI                       H
+ XX GRIDGENA  X(I,0)    0.0
+ ZX GRIDGENA  Y(I,0)                   Y
+ OD I
+
+ DO J         1                        E2
+ RI RJ        J
+ R* X         RJ                       H
+ ZX GRIDGENA  X(E6,J)                  X
+ XX GRIDGENA  Y(E6,J)   6.0
+ OD J
+
+ DO I         E2                       E6-1
+ RI RI        I
+ R* Y         RI                       H
+ XX GRIDGENA  X(I,E2)   2.0
+ ZX GRIDGENA  Y(I,E2)                  Y
+ OD I
+
+ DO J         0                        E2-1
+ RI RJ        J
+ R* X         RJ                       H
+ ZX GRIDGENA  X(E2,J)                  X
+ XX GRIDGENA  Y(E2,J)   2.0
+ OD J
+
+ DO I         1                        E2-1
+ RI RI        I
+ R* Y         RI                       H
+ XX GRIDGENA  X(I,0)    0.0
+ ZX GRIDGENA  Y(I,0)                   Y
+ OD I
+
+START POINT
+
+*   First vertical slice (2 parts)
+
+ DO J         0                        E2-1
+ DO I         0                        E2
+ RI RJ        J
+ R* X         RJ                       H
+ R+ XX        X                        PERT
+ RI RI        I
+ R* Y         RI                       H
+ Z  GRIDGENA  X(I,J)                   XX
+ Z  GRIDGENA  Y(I,J)                   Y
+ OD I
+ DO I         E6                       E10
+ RI RJ        J
+ R* X         RJ                       H
+ RI RI        I
+ R* Y         RI                       H
+ Z  GRIDGENA  X(I,J)                   X
+ Z  GRIDGENA  Y(I,J)                   Y
+ OD I
+ OD J
+
+*   Vertical line at x = 2
+
+ DO I         0                        E10
+ RI RI        I
+ R* Y         RI                       H
+ X  GRIDGENA  X(I,E2)   2.0
+ Z  GRIDGENA  Y(I,E2)                  Y
+ OD I
+
+*   Second vertical slice
+
+ DO J         E2+1                     E4-1
+ DO I         0                        E8
+ RI RJ        J
+ R* X         RJ                       H
+ R+ XX        X                        PERT
+ RI RI        I
+ R* Y         RI                       H
+ R+ YY        Y                        PERT
+ Z  GRIDGENA  X(I,J)                   XX
+ Z  GRIDGENA  Y(I,J)                   YY
+ OD I
+ OD J
+
+*   Third vertical slide
+
+ DO J         E4                       E6
+ DO I         0                        E10
+ RI RJ        J
+ R* X         RJ                       H
+ R+ XX        X                        PERT
+ RI RI        I
+ R* Y         RI                       H
+ R+ YY        Y                        PERT
+ Z  GRIDGENA  X(I,J)                   XX
+ Z  GRIDGENA  Y(I,J)                   YY
+ OD I
+ OD J
+
+*   Fourth vertical slice (2 parts)
+
+ DO J         E6+1                     E8
+ DO I         0                        E3
+ RI RJ        J
+ R* X         RJ                       H
+ RI RI        I
+ R* Y         RI                       H
+ Z  GRIDGENA  X(I,J)                   X
+ Z  GRIDGENA  Y(I,J)                   Y
+ OD I
+ DO I         E7                       E10
+ RI RJ        J
+ R* X         RJ                       H
+ RI RI        I
+ R* Y         RI                       H
+ Z  GRIDGENA  X(I,J)                   X
+ Z  GRIDGENA  Y(I,J)                   Y
+ OD I
+ OD J
+
+ELEMENT TYPE
+
+*   All elements correspond to the Ivanienko functional for a triangle.
+*   This functional only depends ob the RELATIVE positions of
+*   the grid nodes, hence the internal variables corresponding to
+*   node coordinates differences.
+
+ EV IVNKO     XA                       YA
+ EV IVNKO     XB                       YB
+ EV IVNKO     XC                       YC
+ IV IVNKO     XBA                      YBA
+ IV IVNKO     XCA                      YCA
+
+ELEMENT USES
+
+ T  'DEFAULT' IVNKO
+
+*   First slice (2 parts)
+
+ DO J         0                        E2-1
+ IA J+1       J         1
+ DO I         0                        E2-1
+ IA I+1       I         1
+
+ ZV A(I,J)    XA                       X(I,J)
+ ZV A(I,J)    YA                       Y(I,J)
+ ZV A(I,J)    XB                       X(I,J+1)
+ ZV A(I,J)    YB                       Y(I,J+1)
+ ZV A(I,J)    XC                       X(I+1,J)
+ ZV A(I,J)    YC                       Y(I+1,J)
+
+ ZV B(I,J)    XA                       X(I,J+1)
+ ZV B(I,J)    YA                       Y(I,J+1)
+ ZV B(I,J)    XB                       X(I+1,J+1)
+ ZV B(I,J)    YB                       Y(I+1,J+1)
+ ZV B(I,J)    XC                       X(I,J)
+ ZV B(I,J)    YC                       Y(I,J)
+
+ ZV C(I,J)    XA                       X(I+1,J+1)
+ ZV C(I,J)    YA                       Y(I+1,J+1)
+ ZV C(I,J)    XB                       X(I+1,J)
+ ZV C(I,J)    YB                       Y(I+1,J)
+ ZV C(I,J)    XC                       X(I,J+1)
+ ZV C(I,J)    YC                       Y(I,J+1)
+
+ ZV D(I,J)    XA                       X(I+1,J)
+ ZV D(I,J)    YA                       Y(I+1,J)
+ ZV D(I,J)    XB                       X(I,J)
+ ZV D(I,J)    YB                       Y(I,J)
+ ZV D(I,J)    XC                       X(I+1,J+1)
+ ZV D(I,J)    YC                       Y(I+1,J+1)
+
+ OD I
+ DO I         E6                       E10-1
+ IA I+1       I         1
+
+ ZV A(I,J)    XA                       X(I,J)
+ ZV A(I,J)    YA                       Y(I,J)
+ ZV A(I,J)    XB                       X(I,J+1)
+ ZV A(I,J)    YB                       Y(I,J+1)
+ ZV A(I,J)    XC                       X(I+1,J)
+ ZV A(I,J)    YC                       Y(I+1,J)
+
+ ZV B(I,J)    XA                       X(I,J+1)
+ ZV B(I,J)    YA                       Y(I,J+1)
+ ZV B(I,J)    XB                       X(I+1,J+1)
+ ZV B(I,J)    YB                       Y(I+1,J+1)
+ ZV B(I,J)    XC                       X(I,J)
+ ZV B(I,J)    YC                       Y(I,J)
+
+ ZV C(I,J)    XA                       X(I+1,J+1)
+ ZV C(I,J)    YA                       Y(I+1,J+1)
+ ZV C(I,J)    XB                       X(I+1,J)
+ ZV C(I,J)    YB                       Y(I+1,J)
+ ZV C(I,J)    XC                       X(I,J+1)
+ ZV C(I,J)    YC                       Y(I,J+1)
+
+ ZV D(I,J)    XA                       X(I+1,J)
+ ZV D(I,J)    YA                       Y(I+1,J)
+ ZV D(I,J)    XB                       X(I,J)
+ ZV D(I,J)    YB                       Y(I,J)
+ ZV D(I,J)    XC                       X(I+1,J+1)
+ ZV D(I,J)    YC                       Y(I+1,J+1)
+
+ OD I
+ OD J
+
+*   Second vertical slice
+
+ DO J         E2                       E4-1
+ IA J+1       J         1
+ DO I         0                        E8-1
+ IA I+1       I         1
+
+ ZV A(I,J)    XA                       X(I,J)
+ ZV A(I,J)    YA                       Y(I,J)
+ ZV A(I,J)    XB                       X(I,J+1)
+ ZV A(I,J)    YB                       Y(I,J+1)
+ ZV A(I,J)    XC                       X(I+1,J)
+ ZV A(I,J)    YC                       Y(I+1,J)
+
+ ZV B(I,J)    XA                       X(I,J+1)
+ ZV B(I,J)    YA                       Y(I,J+1)
+ ZV B(I,J)    XB                       X(I+1,J+1)
+ ZV B(I,J)    YB                       Y(I+1,J+1)
+ ZV B(I,J)    XC                       X(I,J)
+ ZV B(I,J)    YC                       Y(I,J)
+
+ ZV C(I,J)    XA                       X(I+1,J+1)
+ ZV C(I,J)    YA                       Y(I+1,J+1)
+ ZV C(I,J)    XB                       X(I+1,J)
+ ZV C(I,J)    YB                       Y(I+1,J)
+ ZV C(I,J)    XC                       X(I,J+1)
+ ZV C(I,J)    YC                       Y(I,J+1)
+
+ ZV D(I,J)    XA                       X(I+1,J)
+ ZV D(I,J)    YA                       Y(I+1,J)
+ ZV D(I,J)    XB                       X(I,J)
+ ZV D(I,J)    YB                       Y(I,J)
+ ZV D(I,J)    XC                       X(I+1,J+1)
+ ZV D(I,J)    YC                       Y(I+1,J+1)
+
+ OD I
+ OD J
+
+*   Third vertical slice
+
+ DO J         E4                       E6-1
+ IA J+1       J         1
+ DO I         0                        E10-1
+ IA I+1       I         1
+
+ ZV A(I,J)    XA                       X(I,J)
+ ZV A(I,J)    YA                       Y(I,J)
+ ZV A(I,J)    XB                       X(I,J+1)
+ ZV A(I,J)    YB                       Y(I,J+1)
+ ZV A(I,J)    XC                       X(I+1,J)
+ ZV A(I,J)    YC                       Y(I+1,J)
+
+ ZV B(I,J)    XA                       X(I,J+1)
+ ZV B(I,J)    YA                       Y(I,J+1)
+ ZV B(I,J)    XB                       X(I+1,J+1)
+ ZV B(I,J)    YB                       Y(I+1,J+1)
+ ZV B(I,J)    XC                       X(I,J)
+ ZV B(I,J)    YC                       Y(I,J)
+
+ ZV C(I,J)    XA                       X(I+1,J+1)
+ ZV C(I,J)    YA                       Y(I+1,J+1)
+ ZV C(I,J)    XB                       X(I+1,J)
+ ZV C(I,J)    YB                       Y(I+1,J)
+ ZV C(I,J)    XC                       X(I,J+1)
+ ZV C(I,J)    YC                       Y(I,J+1)
+
+ ZV D(I,J)    XA                       X(I+1,J)
+ ZV D(I,J)    YA                       Y(I+1,J)
+ ZV D(I,J)    XB                       X(I,J)
+ ZV D(I,J)    YB                       Y(I,J)
+ ZV D(I,J)    XC                       X(I+1,J+1)
+ ZV D(I,J)    YC                       Y(I+1,J+1)
+
+ OD I
+ OD J
+
+*   Fourth vertical slice (2 parts)
+
+ DO J         E6                       E8-1
+ IA J+1       J         1
+ DO I         0                        E3-1
+ IA I+1       I         1
+ ZV A(I,J)    XA                       X(I,J)
+ ZV A(I,J)    YA                       Y(I,J)
+ ZV A(I,J)    XB                       X(I,J+1)
+ ZV A(I,J)    YB                       Y(I,J+1)
+ ZV A(I,J)    XC                       X(I+1,J)
+ ZV A(I,J)    YC                       Y(I+1,J)
+
+ ZV B(I,J)    XA                       X(I,J+1)
+ ZV B(I,J)    YA                       Y(I,J+1)
+ ZV B(I,J)    XB                       X(I+1,J+1)
+ ZV B(I,J)    YB                       Y(I+1,J+1)
+ ZV B(I,J)    XC                       X(I,J)
+ ZV B(I,J)    YC                       Y(I,J)
+
+ ZV C(I,J)    XA                       X(I+1,J+1)
+ ZV C(I,J)    YA                       Y(I+1,J+1)
+ ZV C(I,J)    XB                       X(I+1,J)
+ ZV C(I,J)    YB                       Y(I+1,J)
+ ZV C(I,J)    XC                       X(I,J+1)
+ ZV C(I,J)    YC                       Y(I,J+1)
+
+ ZV D(I,J)    XA                       X(I+1,J)
+ ZV D(I,J)    YA                       Y(I+1,J)
+ ZV D(I,J)    XB                       X(I,J)
+ ZV D(I,J)    YB                       Y(I,J)
+ ZV D(I,J)    XC                       X(I+1,J+1)
+ ZV D(I,J)    YC                       Y(I+1,J+1)
+
+ OD I
+ DO I         E7                       E10-1
+ IA I+1       I         1
+
+ ZV A(I,J)    XA                       X(I,J)
+ ZV A(I,J)    YA                       Y(I,J)
+ ZV A(I,J)    XB                       X(I,J+1)
+ ZV A(I,J)    YB                       Y(I,J+1)
+ ZV A(I,J)    XC                       X(I+1,J)
+ ZV A(I,J)    YC                       Y(I+1,J)
+
+ ZV B(I,J)    XA                       X(I,J+1)
+ ZV B(I,J)    YA                       Y(I,J+1)
+ ZV B(I,J)    XB                       X(I+1,J+1)
+ ZV B(I,J)    YB                       Y(I+1,J+1)
+ ZV B(I,J)    XC                       X(I,J)
+ ZV B(I,J)    YC                       Y(I,J)
+
+ ZV C(I,J)    XA                       X(I+1,J+1)
+ ZV C(I,J)    YA                       Y(I+1,J+1)
+ ZV C(I,J)    XB                       X(I+1,J)
+ ZV C(I,J)    YB                       Y(I+1,J)
+ ZV C(I,J)    XC                       X(I,J+1)
+ ZV C(I,J)    YC                       Y(I,J+1)
+
+ ZV D(I,J)    XA                       X(I+1,J)
+ ZV D(I,J)    YA                       Y(I+1,J)
+ ZV D(I,J)    XB                       X(I,J)
+ ZV D(I,J)    YB                       Y(I,J)
+ ZV D(I,J)    XC                       X(I+1,J+1)
+ ZV D(I,J)    YC                       Y(I+1,J+1)
+
+ OD I
+ OD J
+
+GROUP USES
+
+*   First vertical slice (2 parts)
+
+ DO J         0                        E2-1
+ DO I         0                        E2-1
+ XE OBJ       A(I,J)                   B(I,J)
+ XE OBJ       C(I,J)                   D(I,J)
+ OD I
+ DO I         E6                       E10-1
+ XE OBJ       A(I,J)                   B(I,J)
+ XE OBJ       C(I,J)                   D(I,J)
+ OD I
+ OD J
+
+*  Second vertical slice
+
+ DO J         E2                       E4-1
+ DO I         0                        E8-1
+ XE OBJ       A(I,J)                   B(I,J)
+ XE OBJ       C(I,J)                   D(I,J)
+ OD I
+ OD J
+
+*   Third vertical slice
+
+ DO J         E4                       E6-1
+ DO I         0                        E10-1
+ XE OBJ       A(I,J)                   B(I,J)
+ XE OBJ       C(I,J)                   D(I,J)
+ OD I
+ OD J
+
+*   Fourth vertical slice (2 parts)
+
+ DO J         E6                       E8-1
+ DO I         0                        E3-1
+ XE OBJ       A(I,J)                   B(I,J)
+ XE OBJ       C(I,J)                   D(I,J)
+ OD I
+ DO I         E7                       E10-1
+ XE OBJ       A(I,J)                   B(I,J)
+ XE OBJ       C(I,J)                   D(I,J)
+ OD I
+ OD J
+
+OBJECT BOUND
+
+ LO GRIDGENA            0.0
+
+*   Solution
+
+*LO SOLTN(1)            480.0
+*LO SOLTN(2)            1920.0
+*LO SOLTN(3)            4320.0
+*LO SOLTN(4)            7680.0
+*LO SOLTN(5)            12000.0
+*LO SOLTN(6)            17280.0
+*LO SOLTN(7)            23520.0
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      GRIDGENA
+
+TEMPORARIES
+
+ R  N
+ R  D
+ R  D2
+ R  D3
+
+INDIVIDUALS
+
+*  Ivanienko functional for a triangle
+
+ T  IVNKO
+
+ R  XBA       XB        1.0            XA        -1.0
+ R  YBA       YB        1.0            YA        -1.0
+ R  XCA       XC        1.0            XA        -1.0
+ R  YCA       YC        1.0            YA        -1.0
+
+ A  N                   XBA * XBA + YCA * YCA + YBA * YBA
+ A+                     + XCA * XCA
+ A  D                   XBA * YCA - YBA * XCA
+ A  D2                  D * D
+ A  D3                  D * D2
+
+ F                      N / D
+
+ G  XBA                 2.0 * XBA / D - N * YCA / D2
+ G  YBA                 2.0 * YBA / D + N * XCA / D2
+ G  XCA                 2.0 * XCA / D + N * YBA / D2
+ G  YCA                 2.0 * YCA / D - N * XBA / D2
+
+ H  XBA       XBA       2.0 / D + 2.0 * N * YCA * YCA / D3
+ H+                     - 4.0 * XBA * YCA / D2
+ H  XBA       YBA       2.0 * ( XBA * XCA - YBA * YCA ) / D2
+ H+                     - 2.0 * N * YCA * XCA / D3
+ H  XBA       XCA       2.0 * ( XBA * YBA - XCA * YCA ) / D2
+ H+                     - 2.0 * N * YCA * YBA / D3
+ H  XBA       YCA       - 2.0 * ( XBA * XBA + YCA * YCA ) / D2
+ H+                     + 2.0 * N * YCA * XBA / D3 - N / D2
+ H  YBA       YBA       2.0 / D + 2.0 * N * XCA * XCA / D3
+ H+                     + 4.0 * YBA * XCA / D2
+ H  YBA       XCA       2.0 * ( YBA * YBA + XCA * XCA ) / D2
+ H+                     + 2.0 * N * XCA * YBA / D3 + N / D2
+ H  YBA       YCA       - 2.0 * ( YBA * XBA - YCA * XCA ) / D2
+ H+                     - 2.0 * N * XCA * XBA / D3
+ H  XCA       XCA       2.0 / D + 2.0 * N * YBA * YBA / D3
+ H+                     + 4.0 * XCA * YBA / D2
+ H  XCA       YCA       - 2.0 * ( XCA * XBA - YCA * YBA ) / D2
+ H+                     - 2.0 * N * YBA * XBA / D3
+ H  YCA       YCA       2.0 / D + 2.0 * N * XBA * XBA / D3
+ H+                     - 4.0 * YCA * XBA / D2
+
+ENDATA

@@ -1,0 +1,559 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          RAYBENDS
+
+*   Problem:
+*   ********
+
+*   A ray bending problem.  A ray across a inhomogeneous 2D medium is
+*   represented by a beta-spline whose knots can be chosen.  The problem 
+*   is then to optimize the positions of these knots in order to obtain a 
+*   ray path corresponding to the minimum travel time from source to receiver,
+*   according to Fermat principle.
+
+*   In this version, 10 points are used in every interval of the curve
+*   defining the ray in order to compute more accurate travel times.
+
+*   Source: a test example in
+*   T.J. Moser, G. Nolet and R. Snieder,
+*   "Ray bending revisited",
+*   Bulletin of the Seism. Society of America 21(1).
+
+*   SIF input: Ph Toint, Dec 1991.
+
+*   classification OXR2-MY-V-0
+
+*   number of spline knots  ( >= 4 )
+*   ( n = 2 * ( NK - 1 ) ) 
+
+*IE NK                  4              $-PARAMETER n = 6
+*IE NK                  11             $-PARAMETER n = 20
+*IE NK                  26             $-PARAMETER n = 50     original value
+*IE NK                  32             $-PARAMETER n = 62
+*IE NK                  64             $-PARAMETER n = 126
+*IE NK                  512            $-PARAMETER n = 1022
+ IE NK                  1024           $-PARAMETER n = 2046
+
+*   source position
+
+ RE XSRC                0.0
+ RE ZSRC                0.0
+
+*   receiver position
+
+ RE XRCV                100.0
+ RE ZRCV                100.0
+
+*   derived from the number of knots
+
+ IA NK-1      NK        -1
+ IA NK-2      NK        -2
+ IA NK+1      NK        1
+
+*   useful constants
+
+ IE 0                   0
+ IE 1                   1
+ IE 2                   2
+ IE 3                   3
+
+VARIABLES
+
+*   the unknowns are the two coordinates of the spline knots
+
+ DO I         0                        NK
+ X  X(I)
+ X  Z(I)
+ OD I
+
+GROUPS
+
+*   The objective is the travel time along the currently defined ray
+*   One group is defined for the time spent on each spline segment.
+
+ DO I         0                        NK+1
+ XN TIME(I)   
+ XN TIME(I)   'SCALE'   2.0
+ OD I
+
+BOUNDS
+
+ FR RAYBENDS  'DEFAULT'
+
+*   The extreme knots coincide with the source and receiver
+
+ ZX RAYBENDS  X(0)                     XSRC
+ ZX RAYBENDS  Z(0)                     ZSRC
+ ZX RAYBENDS  X(NK)                    XRCV
+ ZX RAYBENDS  Z(NK)                    ZRCV
+
+START POINT
+
+*   The initial knots are chosen as equidistant points on the straight
+*   line joining the source and receiver.
+
+ R- XRANGE    XRCV                     XSRC
+ R- ZRANGE    ZRCV                     ZSRC
+ RI RKNOTS    NK
+ DO I         0                        NK
+ RI REALI     I
+ R/ FRAC      REALI                    RKNOTS
+ R* XINCR     FRAC                     XRANGE
+ R* ZINCR     FRAC                     ZRANGE
+ R+ XC        XSRC                     XINCR
+ R+ ZC        ZSRC                     ZINCR
+ ZV RAYBENDS  X(I)                     XC
+ ZV RAYBENDS  Z(I)                     ZC
+ OD I
+
+ELEMENT TYPE
+
+ EV TT        X1                       X2
+ EV TT        X3                       X4
+ EV TT        Z1                       Z2
+ EV TT        Z3                       Z4
+ IV TT        ZZ1                      ZZ2
+ IV TT        ZZ3                      ZZ4
+ IV TT        X2MX1                    X3MX1
+ IV TT        X4MX1
+
+*     The range is difficult here.  One knows that the element is invariant
+*     wrt to translations in all 4 Xs!!!!
+
+ELEMENT USES
+
+ XT 'DEFAULT' TT
+
+ ZV T(0)      X1                       X(0)
+ ZV T(0)      X2                       X(0)
+ ZV T(0)      X3                       X(0)
+ ZV T(0)      X4                       X(1)
+ ZV T(0)      Z1                       Z(0)
+ ZV T(0)      Z2                       Z(0)
+ ZV T(0)      Z3                       Z(0)
+ ZV T(0)      Z4                       Z(1)
+
+ ZV T(1)      X1                       X(0)
+ ZV T(1)      X2                       X(0)
+ ZV T(1)      X3                       X(1)
+ ZV T(1)      X4                       X(2)
+ ZV T(1)      Z1                       Z(0)
+ ZV T(1)      Z2                       Z(0)
+ ZV T(1)      Z3                       Z(1)
+ ZV T(1)      Z4                       Z(2)
+
+ DO I         2                        NK-1
+ IA I-1       I         -1
+ IA I-2       I         -2
+ IA I+1       I         1
+ ZV T(I)      X1                       X(I-2)
+ ZV T(I)      X2                       X(I-1)
+ ZV T(I)      X3                       X(I)
+ ZV T(I)      X4                       X(I+1)
+ ZV T(I)      Z1                       Z(I-2)
+ ZV T(I)      Z2                       Z(I-1)
+ ZV T(I)      Z3                       Z(I)
+ ZV T(I)      Z4                       Z(I+1)
+ OD I
+
+ ZV T(NK)     X1                       X(NK-2)
+ ZV T(NK)     X2                       X(NK-1)
+ ZV T(NK)     X3                       X(NK)
+ ZV T(NK)     X4                       X(NK)
+ ZV T(NK)     Z1                       Z(NK-2)
+ ZV T(NK)     Z2                       Z(NK-1)
+ ZV T(NK)     Z3                       Z(NK)
+ ZV T(NK)     Z4                       Z(NK)
+
+ ZV T(NK+1)   X1                       X(NK-1)
+ ZV T(NK+1)   X2                       X(NK)
+ ZV T(NK+1)   X3                       X(NK)
+ ZV T(NK+1)   X4                       X(NK)
+ ZV T(NK+1)   Z1                       Z(NK-1)
+ ZV T(NK+1)   Z2                       Z(NK)
+ ZV T(NK+1)   Z3                       Z(NK)
+ ZV T(NK+1)   Z4                       Z(NK)
+
+GROUP USES
+
+ DO I         0                        NK+1
+ XE TIME(I)   T(I)
+ OD I
+
+OBJECT BOUND
+
+*   Analytical solution to the continuous problem
+
+*LO RAYBENDS            96.2424
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      RAYBENDS
+
+TEMPORARIES
+
+ R  FVAL
+ R  GVAL
+ R  HVAL
+
+ F  FVAL
+ F  GVAL
+ F  HVAL
+
+INDIVIDUALS
+
+ T  TT
+
+ R  X2MX1     X1        -1.0           X2        1.0
+ R  X3MX1     X1        -1.0           X3        1.0
+ R  X4MX1     X1        -1.0           X4        1.0
+ R  ZZ1       Z1        1.0
+ R  ZZ2       Z2        1.0
+ R  ZZ3       Z3        1.0
+ R  ZZ4       Z4        1.0
+
+ F                      FVAL( X2MX1, X3MX1, X4MX1,
+ F+                           ZZ1, ZZ2, ZZ3, ZZ4 )
+ G  X2MX1               GVAL( 1, X2MX1, X3MX1, X4MX1,
+ G+                           ZZ1, ZZ2, ZZ3, ZZ4 )
+ G  X3MX1               GVAL( 2, X2MX1, X3MX1, X4MX1,
+ G+                           ZZ1, ZZ2, ZZ3, ZZ4 )
+ G  X4MX1               GVAL( 3, X2MX1, X3MX1, X4MX1,
+ G+                           ZZ1, ZZ2, ZZ3, ZZ4 )
+ G  ZZ1                 GVAL( 4, X2MX1, X3MX1, X4MX1,
+ G+                           ZZ1, ZZ2, ZZ3, ZZ4 )
+ G  ZZ2                 GVAL( 5, X2MX1, X3MX1, X4MX1,
+ G+                           ZZ1, ZZ2, ZZ3, ZZ4 )
+ G  ZZ3                 GVAL( 6, X2MX1, X3MX1, X4MX1,
+ G+                           ZZ1, ZZ2, ZZ3, ZZ4 )
+ G  ZZ4                 GVAL( 7, X2MX1, X3MX1, X4MX1,
+ G+                           ZZ1, ZZ2, ZZ3, ZZ4 )
+ H  X2MX1     X2MX1     HVAL( 1, 1, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 ) 
+ H  X2MX1     X3MX1     HVAL( 1, 2, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 ) 
+ H  X2MX1     X4MX1     HVAL( 1, 3, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 ) 
+ H  X2MX1     ZZ1       HVAL( 1, 4, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 ) 
+ H  X2MX1     ZZ2       HVAL( 1, 5, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 ) 
+ H  X2MX1     ZZ3       HVAL( 1, 6, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 ) 
+ H  X2MX1     ZZ4       HVAL( 1, 7, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 ) 
+ H  X3MX1     X3MX1     HVAL( 2, 2, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 ) 
+ H  X3MX1     X4MX1     HVAL( 2, 3, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 ) 
+ H  X3MX1     ZZ1       HVAL( 2, 4, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 ) 
+ H  X3MX1     ZZ2       HVAL( 2, 5, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 ) 
+ H  X3MX1     ZZ3       HVAL( 2, 6, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 ) 
+ H  X3MX1     ZZ4       HVAL( 2, 7, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 ) 
+ H  X4MX1     X4MX1     HVAL( 3, 3, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 ) 
+ H  X4MX1     ZZ1       HVAL( 3, 4, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 ) 
+ H  X4MX1     ZZ2       HVAL( 3, 5, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 ) 
+ H  X4MX1     ZZ3       HVAL( 3, 6, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 ) 
+ H  X4MX1     ZZ4       HVAL( 3, 7, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 )
+ H  ZZ1       ZZ1       HVAL( 4, 4, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 )
+ H  ZZ1       ZZ2       HVAL( 4, 5, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 )
+ H  ZZ1       ZZ3       HVAL( 4, 6, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 )
+ H  ZZ1       ZZ4       HVAL( 4, 7, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 )
+ H  ZZ2       ZZ2       HVAL( 5, 5, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 )
+ H  ZZ2       ZZ3       HVAL( 5, 6, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 )
+ H  ZZ2       ZZ4       HVAL( 5, 7, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 )
+ H  ZZ3       ZZ3       HVAL( 6, 6, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 )
+ H  ZZ3       ZZ4       HVAL( 6, 7, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 )
+ H  ZZ4       ZZ4       HVAL( 7, 7, X2MX1, X3MX1, X4MX1,
+ H+                           ZZ1, ZZ2, ZZ3, ZZ4 )
+
+
+ENDATA
+C
+      DOUBLE PRECISION FUNCTION FVAL( X2MX1, X3MX1, X4MX1,
+     +                                ZZ1, ZZ2, ZZ3, ZZ4 )
+      DOUBLE PRECISION X2MX1, X3MX1, X4MX1, ZZ1, ZZ2, ZZ3, ZZ4
+C
+C  Compute the objective's value
+C
+      DOUBLE PRECISION F, G(7), H(7,7)
+C
+      CALL EVAL( 0, F, G, H, X2MX1, X3MX1, X4MX1, ZZ1, ZZ2, ZZ3, ZZ4)
+      FVAL = F
+      RETURN
+      END
+C
+C
+C
+      DOUBLE PRECISION FUNCTION GVAL( I, X2MX1, X3MX1, X4MX1,
+     +                                ZZ1, ZZ2, ZZ3, ZZ4 )
+      DOUBLE PRECISION X2MX1, X3MX1, X4MX1, ZZ1, ZZ2, ZZ3, ZZ4
+      INTEGER          I
+C
+C  Compute the gradient values
+C
+      DOUBLE PRECISION F, G(7), H(7,7)
+C
+      CALL EVAL( 1, F, G, H, X2MX1, X3MX1, X4MX1, ZZ1, ZZ2, ZZ3, ZZ4)
+      GVAL = G( I )
+      RETURN
+      END
+C
+C
+C
+      DOUBLE PRECISION FUNCTION HVAL( I, J, X2MX1, X3MX1, X4MX1, 
+     +                                ZZ1, ZZ2, ZZ3, ZZ4 )
+      DOUBLE PRECISION X2MX1, X3MX1, X4MX1, ZZ1, ZZ2, ZZ3, ZZ4
+      INTEGER          I, J
+C
+C  Compute the Hessian values
+C
+      DOUBLE PRECISION F, G(7), H(7,7)
+C
+      CALL EVAL( 2, F, G, H, X2MX1, X3MX1, X4MX1, ZZ1, ZZ2, ZZ3, ZZ4)
+      IF ( I .LE. J ) THEN
+        HVAL = H( I, J )
+      ELSE
+        HVAL = H( J, I )
+      ENDIF
+      RETURN
+      END
+C
+C
+C
+      SUBROUTINE EVAL( DER, F, G, H, X2MX1, X3MX1, X4MX1,
+     +                                ZZ1, ZZ2, ZZ3, ZZ4 )
+      DOUBLE PRECISION X2MX1, X3MX1, X4MX1, ZZ1, ZZ2, ZZ3, ZZ4
+      DOUBLE PRECISION F, G(7), H(7,7)
+      INTEGER          DER
+C
+C  number of points within a spline interval
+C
+      INTEGER          M
+      PARAMETER      ( M = 10 )
+C
+C
+      DOUBLE PRECISION C(M+1), DX, Z(M+1), T(M+1), ZDZ1(M+1)
+      DOUBLE PRECISION ZDZ2(M+1), ZDZ3(M+1), ZDZ4(M+1), DXD2, DXD3
+      DOUBLE PRECISION DXD4, V, VDZ1, VDZ2, VDZ3, VDZ4, VDZ1Z1
+      DOUBLE PRECISION VDZ1Z2, VDZ1Z3, VDZ1Z4, VDZ2Z3, VDZ2Z4, VDZ3Z4
+      DOUBLE PRECISION VDZ2Z2, VDZ3Z3, VDZ4Z4, DZ, DZDZ1, DZDZ2, DZDZ3
+      DOUBLE PRECISION DZDZ4, CC, CN, CSQ, CNSQ, CCB, CNCB, R, RD2
+      DOUBLE PRECISION RD3, RD4, RDZ1, RDZ2, RDZ3, RDZ4, FACT1, FACT2
+      DOUBLE PRECISION FACT3, RD2D2, RD2D3, RD2D4, RD2DZ1, RD2DZ2
+      DOUBLE PRECISION RD2DZ3, RD2DZ4, RD3D3, RD3D4, RD3DZ1, RD3DZ2
+      DOUBLE PRECISION RD3DZ3, RD3DZ4, RD4D4, RD4DZ1, RD4DZ2, RD4DZ3
+      DOUBLE PRECISION RD4DZ4, RDZ1Z1, RDZ1Z2, RDZ1Z3, RDZ1Z4, RDZ2Z2
+      DOUBLE PRECISION RDZ2Z3, RDZ2Z4, RDZ3Z3, RDZ3Z4, RDZ4Z4
+      DOUBLE PRECISION Q
+      EXTERNAL Q
+      INTEGER          K, L
+      INTRINSIC        SQRT
+      DO 10 K = 1, M+1
+        T(K) = 0.1D0 * ( K - 1.0D0 )
+        ZDZ1(K) = Q ( 1, T(K) )
+        ZDZ2(K) = Q ( 2, T(K) )
+        ZDZ3(K) = Q ( 3, T(K) )
+        ZDZ4(K) = Q ( 4, T(K) )
+        Z(K) = ZZ1 * ZDZ1( K ) + ZZ2 * ZDZ2( K )
+     +         + ZZ3 * ZDZ3( K ) + ZZ4 * ZDZ4( K ) 
+        C(K) = 1.0D0 + 0.01 * Z(K)
+10    CONTINUE
+      F = 0.0D0
+      IF ( DER .GE. 1 ) THEN
+        DO 40 K = 1, 7
+          G(K) = 0.0D0
+          IF ( DER .EQ. 2 ) THEN
+            DO 50 L = 1, 7
+              H( K, L ) = 0.0D0
+50          CONTINUE
+          ENDIF
+40      CONTINUE
+      ENDIF
+      DO 30 K = 1, M
+        DXD2 = Q( 2, T( K + 1 ) ) - Q( 2, T( K ) )
+        DXD3 = Q( 3, T( K + 1 ) ) - Q( 3, T( K ) )
+        DXD4 = Q( 4, T( K + 1 ) ) - Q( 4, T( K ) )
+        DX   = X2MX1 * DXD2 + X3MX1 * DXD3 + X4MX1 *  DXD4
+        CC   = C( K )
+        CN   = C( K + 1 )
+        V    = 1.0D0 / CC + 1.0D0 / CN
+        IF ( DER . GE. 1 ) THEN
+          CSQ  = - 0.01 / ( CC * CC )
+          CNSQ = - 0.01 / ( CN * CN )
+          VDZ1 = ZDZ1( K + 1 ) * CNSQ + ZDZ1( K ) * CSQ
+          VDZ2 = ZDZ2( K + 1 ) * CNSQ + ZDZ2( K ) * CSQ
+          VDZ3 = ZDZ3( K + 1 ) * CNSQ + ZDZ3( K ) * CSQ
+          VDZ4 = ZDZ4( K + 1 ) * CNSQ + ZDZ4( K ) * CSQ
+          IF ( DER .EQ. 2 ) THEN
+            CCB  = 0.0002 / CC**3
+            CNCB = 0.0002 / CN**3
+            VDZ1Z1 = ZDZ1( K + 1 ) * ZDZ1( K + 1 ) * CNCB 
+     +               + ZDZ1( K ) * ZDZ1( K ) * CCB
+            VDZ1Z2 = ZDZ1( K + 1 ) * ZDZ2( K + 1 ) * CNCB 
+     +               + ZDZ1( K ) * ZDZ2( K ) * CCB
+            VDZ1Z3 = ZDZ1( K + 1 ) * ZDZ3( K + 1 ) * CNCB 
+     +               + ZDZ1( K ) * ZDZ3( K ) * CCB
+            VDZ1Z4 = ZDZ1( K + 1 ) * ZDZ4( K + 1 ) * CNCB 
+     +               + ZDZ1( K ) * ZDZ4( K ) * CCB
+            VDZ2Z2 = ZDZ2( K + 1 ) * ZDZ2( K + 1 ) * CNCB 
+     +               + ZDZ2( K ) * ZDZ2( K ) * CCB
+            VDZ2Z3 = ZDZ2( K + 1 ) * ZDZ3( K + 1 ) * CNCB 
+     +               + ZDZ2( K ) * ZDZ3( K ) * CCB
+            VDZ2Z4 = ZDZ2( K + 1 ) * ZDZ4( K + 1 ) * CNCB 
+     +               + ZDZ2( K ) * ZDZ4( K ) * CCB
+            VDZ3Z3 = ZDZ3( K + 1 ) * ZDZ3( K + 1 ) * CNCB 
+     +               + ZDZ3( K ) * ZDZ3( K ) * CCB
+            VDZ3Z4 = ZDZ3( K + 1 ) * ZDZ4( K + 1 ) * CNCB 
+     +               + ZDZ3( K ) * ZDZ4( K ) * CCB
+            VDZ4Z4 = ZDZ4( K + 1 ) * ZDZ4( K + 1 ) * CNCB 
+     +               + ZDZ4( K ) * ZDZ4( K ) * CCB
+          ENDIF
+        ENDIF
+        DZ = Z( K + 1) - Z( K )
+        IF ( DER .GE. 1 ) THEN
+          DZDZ1 = ZDZ1( K + 1 ) - ZDZ1( K )
+          DZDZ2 = ZDZ2( K + 1 ) - ZDZ2( K )
+          DZDZ3 = ZDZ3( K + 1 ) - ZDZ3( K )
+          DZDZ4 = ZDZ4( K + 1 ) - ZDZ4( K )
+        ENDIF
+        R = SQRT( DX * DX + DZ * DZ )
+        IF ( DER .GE. 1 ) THEN
+          RD2  = DX * DXD2 / R
+          RD3  = DX * DXD3 / R
+          RD4  = DX * DXD4 / R
+          RDZ1 = DZ * DZDZ1 / R
+          RDZ2 = DZ * DZDZ2 / R
+          RDZ3 = DZ * DZDZ3 / R
+          RDZ4 = DZ * DZDZ4 / R
+          IF ( DER .EQ. 2 ) THEN
+            FACT1  = ( 1.0D0 - DX**2 / ( R * R ) ) / R
+            FACT2  = - DX * DZ / R**3
+            FACT3  = ( 1.0D0 - DZ**2 / ( R * R ) ) / R
+            RD2D2  = FACT1 * DXD2 * DXD2
+            RD2D3  = FACT1 * DXD2 * DXD3
+            RD2D4  = FACT1 * DXD2 * DXD4
+            RD2DZ1 = FACT2 * DXD2 * DZDZ1
+            RD2DZ2 = FACT2 * DXD2 * DZDZ2
+            RD2DZ3 = FACT2 * DXD2 * DZDZ3
+            RD2DZ4 = FACT2 * DXD2 * DZDZ4
+            RD3D3  = FACT1 * DXD3 * DXD3
+            RD3D4  = FACT1 * DXD3 * DXD4
+            RD3DZ1 = FACT2 * DXD3 * DZDZ1
+            RD3DZ2 = FACT2 * DXD3 * DZDZ2
+            RD3DZ3 = FACT2 * DXD3 * DZDZ3
+            RD3DZ4 = FACT2 * DXD3 * DZDZ4
+            RD4D4  = FACT1 * DXD4 * DXD4
+            RD4DZ1 = FACT2 * DXD4 * DZDZ1
+            RD4DZ2 = FACT2 * DXD4 * DZDZ2
+            RD4DZ3 = FACT2 * DXD4 * DZDZ3
+            RD4DZ4 = FACT2 * DXD4 * DZDZ4
+            RDZ1Z1 = FACT3 * DZDZ1 * DZDZ1
+            RDZ1Z2 = FACT3 * DZDZ1 * DZDZ2
+            RDZ1Z3 = FACT3 * DZDZ1 * DZDZ3
+            RDZ1Z4 = FACT3 * DZDZ1 * DZDZ4
+            RDZ2Z2 = FACT3 * DZDZ2 * DZDZ2
+            RDZ2Z3 = FACT3 * DZDZ2 * DZDZ3
+            RDZ2Z4 = FACT3 * DZDZ2 * DZDZ4
+            RDZ3Z3 = FACT3 * DZDZ3 * DZDZ3
+            RDZ3Z4 = FACT3 * DZDZ3 * DZDZ4
+            RDZ4Z4 = FACT3 * DZDZ4 * DZDZ4
+          ENDIF
+        ENDIF
+        F = F + V * R
+        IF ( DER .GE. 1 ) THEN
+          G(1) = G(1) + V * RD2
+          G(2) = G(2) + V * RD3
+          G(3) = G(3) + V * RD4
+          G(4) = G(4) + V * RDZ1 + VDZ1 * R
+          G(5) = G(5) + V * RDZ2 + VDZ2 * R
+          G(6) = G(6) + V * RDZ3 + VDZ3 * R
+          G(7) = G(7) + V * RDZ4 + VDZ4 * R
+          IF ( DER .EQ. 2 ) THEN
+            H(1,1) = H(1,1) + V * RD2D2
+            H(1,2) = H(1,2) + V * RD2D3
+            H(1,3) = H(1,3) + V * RD2D4
+            H(1,4) = H(1,4) + VDZ1 * RD2 + V * RD2DZ1
+            H(1,5) = H(1,5) + VDZ2 * RD2 + V * RD2DZ2
+            H(1,6) = H(1,6) + VDZ3 * RD2 + V * RD2DZ3
+            H(1,7) = H(1,7) + VDZ4 * RD2 + V * RD2DZ4
+            H(2,2) = H(2,2) + V * RD3D3
+            H(2,3) = H(2,3) + V * RD3D4
+            H(2,4) = H(2,4) + VDZ1 * RD3 + V * RD3DZ1
+            H(2,5) = H(2,5) + VDZ2 * RD3 + V * RD3DZ2
+            H(2,6) = H(2,6) + VDZ3 * RD3 + V * RD3DZ3
+            H(2,7) = H(2,7) + VDZ4 * RD3 + V * RD3DZ4
+            H(3,3) = H(3,3) + V * RD4D4
+            H(3,4) = H(3,4) + VDZ1 * RD4 + V * RD4DZ1
+            H(3,5) = H(3,5) + VDZ2 * RD4 + V * RD4DZ2
+            H(3,6) = H(3,6) + VDZ3 * RD4 + V * RD4DZ3
+            H(3,7) = H(3,7) + VDZ4 * RD4 + V * RD4DZ4
+            H(4,4) = H(4,4) + V * RDZ1Z1 + VDZ1Z1 * R
+     +                      + 2.0D0 * VDZ1 * RDZ1
+            H(4,5) = H(4,5) + V * RDZ1Z2 + VDZ1 * RDZ2 + VDZ2 * RDZ1
+     +                      + R * VDZ1Z2
+            H(4,6) = H(4,6) + V * RDZ1Z3 + VDZ1 * RDZ3 + VDZ3 * RDZ1
+     +                      + R * VDZ1Z3
+            H(4,7) = H(4,7) + V * RDZ1Z4 + VDZ1 * RDZ4 + VDZ4 * RDZ1
+     +                      + R * VDZ1Z4
+            H(5,5) = H(5,5) + V * RDZ2Z2 + VDZ2Z2 * R
+     +                      + 2.0D0 * VDZ2 * RDZ2
+            H(5,6) = H(5,6) + V * RDZ2Z3 + VDZ2 * RDZ3 + VDZ3 * RDZ2
+     +                      + R * VDZ2Z3
+            H(5,7) = H(5,7) + V * RDZ2Z4 + VDZ2 * RDZ4 + VDZ4 * RDZ2
+     +                      + R * VDZ2Z4
+            H(6,6) = H(6,6) + V * RDZ3Z3 + VDZ3Z3 * R
+     +                      + 2.0D0 * VDZ3 * RDZ3
+            H(6,7) = H(6,7) + V * RDZ3Z4 + VDZ3 * RDZ4 + VDZ4 * RDZ3
+     +                      + R * VDZ3Z4
+            H(7,7) = H(7,7) + V * RDZ4Z4 + VDZ4Z4 * R
+     +                      + 2.0D0 * VDZ4 * RDZ4
+          ENDIF
+        ENDIF
+30    CONTINUE
+      END
+C
+C
+C
+      DOUBLE PRECISION FUNCTION Q( I, X )
+      DOUBLE PRECISION X
+      INTEGER          I
+C
+C  Compute the beta-spline coefficients
+C
+      IF ( I .EQ. 1 ) THEN
+        Q = 0.166666667 - 0.5 * X + 0.5 * X * X - 0.1666667 * X**3
+      ELSE IF ( I .EQ. 2) THEN
+        Q = 0.666666667 - X * X + 0.5 * X**3
+      ELSE IF ( I. EQ. 3 ) THEN
+        Q = 0.166666667 + 0.5 * X + 0.5 * X * X - 0.5 * X**3
+      ELSE
+        Q = 0.166666667 * X**3
+      ENDIF
+      RETURN
+      END

@@ -1,0 +1,232 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          VANDANMSLS
+
+*   Problem :
+*   *********
+
+*   ISIS Data fitting problem VANDANIUM given as an inconsistent set of
+*   nonlinear equations (trial version with subset of data)
+
+*   Fit: y = BS(x,b) + e
+
+*   Source: fit to a cubic B-spline to data
+*     vanadium_pattern_enginx236516_bank1.txt from Mantid
+*     (http://www.mantidproject.org)
+*     obtained from a bank of detectors of ISIS's ENGIN-X
+
+*   SIF input: Nick Gould and Tyrone Rees, Dec 2015
+*   Least-squares version of VANDANIUMS.SIF, Nick Gould, Jan 2020.
+
+*   classification SUR2-MN-V-0
+
+*   Number of data values
+
+ IE M                   10
+
+*   Number of knots
+
+ IE KNOTS               20             $-PARAMETER n = 22
+ IE KNOTS               1000           $-PARAMETER n = 22
+
+*   Number of variables
+
+ IA N         KNOTS     -1
+
+*   Lower and upper knots
+
+ RE XL                  0.0
+ RE XU                  5.5
+
+*   Useful parameters
+
+ IE 1                   1
+ IE -1                   -1
+ I+ N+1       N                        1
+ RE ONE                 1.0
+ RI RN        N
+ R- XU-XL     XU                       XL
+ R/ H         XU-XL                    RN
+
+*  Data values
+
+ RE X1                  0.245569
+ RE X2                  0.245927
+ RE X3                  0.246285
+ RE X4                  0.246642
+ RE X5                  0.247
+ RE X6                  0.247358
+ RE X7                  0.248074
+ RE X8                  0.248431
+ RE X9                  0.248789
+ RE X10                 0.249147
+
+ RE Y1                  0.262172
+ RE Y2                  1.73783
+ RE Y3                  0.960973
+ RE Y4                  0.0390275
+ RE Y5                  2.57713
+ RE Y6                  1.42287
+ RE Y7                  2.0
+ RE Y8                  1.22819
+ RE Y9                  0.771811
+ RE Y10                 4.0
+
+ RE E1                  0.512028
+ RE E2                  1.31827
+ RE E3                  0.980292
+ RE E4                  0.197554
+ RE E5                  1.60534
+ RE E6                  1.19284
+ RE E7                  1.41421
+ RE E8                  1.10824
+ RE E9                  0.878528
+ RE E10                 2.0
+
+VARIABLES
+
+ DO I         -1                       N+1
+ X  A(I)
+ ND
+
+GROUPS
+
+ DO I         1                        M
+ ZN F(I)
+ ND
+
+CONSTANTS
+
+ DO I         1                        M
+ A= E         E(I)
+ R/ EINV      ONE                      E
+ A* YOVERE    EINV                     Y(I)
+ Z  VESUVIO   F(I)                     YOVERE
+ ND
+
+BOUNDS
+
+ FR VESUVIO   'DEFAULT'
+
+START POINT
+
+    START1    'DEFAULT' 0.0
+
+ELEMENT TYPE
+
+ EV BSPLINE   A
+ EP BSPLINE   X0
+ EP BSPLINE   K
+ EP BSPLINE   H
+ EP BSPLINE   X
+
+ELEMENT USES
+
+ DO I         1                        M
+ DO K         -1                       N+1
+ RI RK        K
+ XT G(I,K)    BSPLINE
+ ZV G(I,K)    A                        A(K)
+ ZP G(I,K)    X0                       XL
+ ZP G(I,K)    K                        RK
+ ZP G(I,K)    H                        H
+ ZP G(I,K)    X                        X(I)
+ ND
+
+GROUP TYPE
+
+ GV L2        GVAR
+
+GROUP USES
+
+ XT 'DEFAULT' L2
+
+ DO I         1                        M
+ A= E         E(I)
+ R/ EINV      ONE                      E
+ DO K         -1                       N+1
+ ZE F(I)      G(I,K)                   EINV
+ ND
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO VANDANIUM           0.0
+
+*   Solution
+
+*LO SOLTN
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      VANDANMSLS
+
+TEMPORARIES
+
+ R  BK
+ R  B
+ F  B
+
+INDIVIDUALS
+
+ T  BSPLINE
+
+ A  BK                  B( X0, K, H, X )
+
+ F                      A * BK
+ G  A                   BK
+
+ENDATA
+
+*********************
+* SET UP THE GROUPS *
+* ROUTINE           *
+*********************
+
+GROUPS        VANDANMSLS
+
+INDIVIDUALS
+
+ T  L2
+ F                      GVAR * GVAR
+ G                      GVAR + GVAR
+ H                      2.0
+
+ENDATA
+
+*****************************
+*     EXTERNAL FUNCTION     *
+*****************************
+
+
+      DOUBLE PRECISION FUNCTION b( x0, k, h, x )
+C
+C  compute the value of the k-th B-Spline at x
+C
+      DOUBLE PRECISION x0, h, k, x
+      DOUBLE PRECISION xs, twoh
+      xx = x - k * h
+      twoh = h + h
+      IF ( xx .LE. x0 - twoh .OR. xx .GE. x0 + twoh ) THEN
+        b = 0.0D0
+      ELSE IF ( xx .LE. x0 - h ) THEN
+        b = ( twoh + ( xx - x0 ) ** 3 ) / 6.0D0
+      ELSE IF ( xx .GE. x0 + h ) THEN
+        b = ( twoh - ( xx - x0 ) ** 3 ) / 6.0D0
+      ELSE IF ( xx .LE. x0 ) THEN
+        b = twoh * h * h / 3.0D0
+     *      - 5.0D-1 * ( twoh + xx - x0 ) * ( xx - x0 ) ** 2
+      ELSE
+        b = twoh * h * h / 3.0D0
+     *      - 5.0D-1 * ( twoh - xx + x0 ) * ( xx - x0 ) ** 2
+      END IF
+      RETURN
+      END

@@ -1,0 +1,295 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          ODC
+
+*   Problem :
+*   *********
+
+*   Optimal Design with Composites: The optimal design problem requires
+*   determining the placement of two elastic materials in the cross-section
+*   of a rod so as to maximize the resulting torsional rigidity.
+
+*   Source: 
+*   B. Averick and J.J. More',
+*   "Evaluation of Large-Scale Optimization Problems on Vector and Parallel
+*   Architectures ",
+*   Report MCS-P379-0893, Mathematics and Computer Science Division,
+*   Argonne National Laboratory, 1993.
+
+*   SIF input: Ph. Toint, Nov 1993
+
+*   classification OXR2-MY-V-0
+
+*   NX is the number of interior points along the X axis, NY that of
+*   interior points along the Y axis.
+*   The number of free variables is NX * NY
+
+*IE NX                  2              $-PARAMETER n = 4
+*IE NY                  2              $-PARAMETER n = 4
+
+*IE NX                  10             $-PARAMETER n = 100  original value
+*IE NY                  10             $-PARAMETER n = 100  original value
+
+*IE NX                  31             $-PARAMETER n = 992
+*IE NY                  32             $-PARAMETER n = 992
+
+ IE NX                  70             $-PARAMETER n = 4900
+ IE NY                  70             $-PARAMETER n = 4900
+
+*IE NX                  100            $-PARAMETER n = 10000
+*IE NY                  100            $-PARAMETER n = 10000
+
+*IE NX                  200            $-PARAMETER n = 40000
+*IE NY                  200            $-PARAMETER n = 40000
+
+*   Define a few helpful parameters
+
+ IA NX+1      NX        1
+ IA NY+1      NY        1
+
+ RI RNX+1     NX+1
+ RD HX        RNX+1     1.0
+ RI RNY+1     NY+1
+ RD HY        RNY+1     1.0
+ R* HXSQ      HX                       HX
+ R* HYSQ      HY                       HY
+ R* HXHY      HX                       HY
+ RM HXHY/2    HXHY      0.5
+ RE SIX                 6.0
+ R/ HXHY/6    HXHY                     SIX
+
+ IE 0                   0
+ IE 1                   1
+
+VARIABLES
+
+*   Define one variable per discretized point in the unit square
+
+ DO I         0                        NX+1
+ DO J         0                        NY+1
+ X  X(I,J)
+ OD J
+ OD I
+
+GROUPS
+
+*   Lower triangles
+
+ DO I         0                        NX
+ IA I+1       I         1
+ DO J         0                        NY
+ IA J+1       J         1
+
+ ZN FL(I,J)   X(I,J)                   HXHY/6
+ ZN FL(I,J)   X(I+1,J)                 HXHY/6
+ ZN FL(I,J)   X(I,J+1)                 HXHY/6
+
+ OD J
+ OD I
+
+*   Upper triangles
+
+ DO I         1                        NX+1
+ IA I-1       I         -1
+ DO J         1                        NY+1
+ IA J-1       J         -1
+
+ ZN FU(I,J)   X(I,J)                   HXHY/6
+ ZN FU(I,J)   X(I-1,J)                 HXHY/6
+ ZN FU(I,J)   X(I,J-1)                 HXHY/6
+
+ OD J
+ OD I
+
+BOUNDS
+
+ FR ODC       'DEFAULT'
+
+*   Zero on the boundary
+
+ DO I         0                        NX+1
+ XX ODC       X(I,0)    0.0
+ XX ODC       X(I,NY+1) 0.0
+ OD I
+
+ DO J         1                        NY
+ XX ODC       X(0,J)    0.0
+ XX ODC       X(NX+1,J) 0.0
+ OD J
+
+START POINT
+
+ DO I         0                        NX+1
+ XV ODC       X(I,0)    0.0
+ XV ODC       X(I,NY+1) 0.0
+ OD I
+
+ DO J         1                        NY
+ XV ODC       X(0,J)    0.0
+ XV ODC       X(NX+1,J) 0.0
+ OD J
+
+
+ELEMENT TYPE
+
+ EV PSI       V1                       V2
+ EV PSI       V0
+ IV PSI       U                        V
+ EP PSI       HXHX                     HYHY
+
+ELEMENT USES
+
+*   Lower triangles
+
+ DO I         0                        NX
+ IA I+1       I         1
+ DO J         0                        NY
+ IA J+1       J         1
+
+ XT A(I,J)    PSI
+ ZV A(I,J)    V1                       X(I+1,J)
+ ZV A(I,J)    V2                       X(I,J+1)
+ ZV A(I,J)    V0                       X(I,J)
+ ZP A(I,J)    HXHX                     HXSQ
+ ZP A(I,J)    HYHY                     HYSQ
+
+ OD J
+ OD I
+
+*   Upper triangles
+
+ DO I         1                        NX+1
+ IA I-1       I         -1 
+ DO J         1                        NY+1
+ IA J-1       J         -1
+
+ XT B(I,J)    PSI
+ ZV B(I,J)    V1                       X(I-1,J)
+ ZV B(I,J)    V2                       X(I,J-1)
+ ZV B(I,J)    V0                       X(I,J)
+ ZP B(I,J)    HXHX                     HXSQ
+ ZP B(I,J)    HYHY                     HYSQ
+
+ OD J
+ OD I
+
+GROUP USES
+
+*   Lower triangles
+
+ DO I         0                        NX
+ DO J         0                        NY
+ ZE FL(I,J)   A(I,J)                   HXHY/2
+ OD J
+ OD I
+
+*   Upper triangles
+
+ DO I         1                        NX+1
+ DO J         1                        NY+1
+ ZE FU(I,J)   B(I,J)                   HXHY/2
+ OD J
+ OD I
+
+OBJECT BOUND
+
+*   Solution
+
+*LO SOLTN(10,10)       
+*LO SOLTN(31,32)       
+*LO SOLTN(100,100)     
+*LO SOLTN(200,200)     
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      ODC
+
+TEMPORARIES
+
+ R  S1
+ R  S2
+ R  E
+ R  L
+ R  MU1
+ R  MU2
+ R  T1
+ R  T2
+ R  F
+ R  DFDU
+ R  DFDV
+ R  D2FDUU
+ R  D2FDUV
+ R  D2FDVV
+ R  S
+
+ L  I1
+ L  I2
+ L  I3
+
+ M  SQRT
+
+GLOBALS
+
+ A  L                   0.008
+ A  MU1                 1.0
+ A  MU2                 2.0
+
+INDIVIDUALS
+
+ T  PSI
+
+ R  U         V1        1.0            V0        -1.0
+ R  V         V2        1.0            V0        -1.0
+
+ A  T1                  SQRT( 2.0 * L * MU1 / MU2 )
+ A  T2                  SQRT( 2.0 * L * MU2 / MU1 ) 
+ A  S1                  U * U / HXHX
+ A  S2                  V * V / HYHY
+ A  S                   S1 + S2
+ A  E                   SQRT( S )
+
+ A  I1                  E .LE. T1
+ A  I2                  E .GT. T1 .AND. E .LE. T2
+ A  I3                  E .GT. T2
+
+ I  I1        F         0.5 * MU2 * S
+ I  I1        DFDU      MU2 * U / HXHX
+ I  I1        DFDV      MU2 * V / HYHY
+ I  I1        D2FDUU    MU2 / HXHX
+ I  I1        D2FDUV    0.0
+ I  I1        D2FDVV    MU2 / HYHY
+
+ I  I2        F         MU2 * T1 * ( E - 0.5 * T1 )
+ I  I2        DFDU      MU2 * T1 * U / ( HXHX * E )
+ I  I2        DFDV      MU2 * T1 * V / ( HYHY * E )
+ I  I2        D2FDUU    MU2 * T1 * ( 1.0 - 0.5 * U * U / 
+ I+                      ( HXHX * S ) ) / ( HXHX * E )
+ I  I2        D2FDUV    -0.5 * MU2 * T1 * U * V /
+ I+                      ( HYHY * HXHX * S * E )
+ I  I2        D2FDVV    MU2 * T1 * ( 1.0 - 0.5 * V * V / 
+ I+                      ( HYHY * S ) ) / ( HYHY * E )
+
+ I  I3        F         0.5 * MU1 * ( S - T2 * T2 ) +
+ I+                     MU2 * T1 * ( T2 - 0.5 * T1)
+ I  I3        DFDU      MU1 * U / HXHX
+ I  I3        DFDV      MU1 * V / HYHY
+ I  I3        D2FDUU    MU1 / HXHX
+ I  I3        D2FDUV    0.0
+ I  I3        D2FDVV    MU1 / HYHY
+
+ F                      F
+ G  U                   DFDU
+ G  V                   DFDV
+ H  U         U         D2FDUU
+ H  U         V         D2FDUV
+ H  V         V         D2FDVV
+
+ENDATA
+

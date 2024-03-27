@@ -1,0 +1,118 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          BDEXP
+
+*   Problem :
+*   *********
+*   A banded exponential problem.
+
+*   Source: Problem 56 in
+*   A.R. Conn, N.I.M. Gould, M. Lescrenier and Ph.L. Toint,
+*   "Performance of a multifrontal scheme for partially separable
+*   optimization",
+*   Report 88/4, Dept of Mathematics, FUNDP (Namur, B), 1988.
+
+*   SIF input: Ph. Toint, Dec 1989.
+
+*   classification OBR2-AY-V-0
+
+*   N is the number of variables
+
+*IE N                   100            $-PARAMETER     original value
+*IE N                   500            $-PARAMETER
+*IE N                   1000           $-PARAMETER
+ IE N                   5000           $-PARAMETER
+
+*   Number of groups sets
+
+ IA NGS       N         -2
+
+*   Define useful parameters
+
+ IE 1                   1
+
+VARIABLES
+
+ DO I         1                        N
+ X  X(I)
+ ND
+
+GROUPS
+
+ DO I         1                        NGS
+ XN G(I)
+ ND
+
+START POINT
+
+ XV BDEXP     'DEFAULT'  1.0
+
+ELEMENT TYPE
+
+ EV DEXP      V1                       V2
+ EV DEXP      V3
+ IV DEXP      U1                       U2
+
+ELEMENT USES
+
+ XT 'DEFAULT' DEXP
+
+ DO I         1                        NGS
+
+ IA I+1       I          1
+ IA I+2       I          2
+
+ ZV A(I)      V1                       X(I)
+ ZV A(I)      V2                       X(I+1)
+ ZV A(I)      V3                       X(I+2)
+
+ ND
+
+GROUP USES
+
+ DO I         1                        NGS
+ XE G(I)      A(I)
+ ND
+
+OBJECT BOUND
+
+ LO BDEXP               0.0
+
+*   Solution
+
+*LO SOLTN               0.0
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      BDEXP
+
+TEMPORARIES
+
+ R  EXP12
+ R  U1XU2
+ R  TEMP
+ M  EXP
+
+INDIVIDUALS
+
+ T  DEXP
+ R  U1        V1        1.0            V2        1.0
+ R  U2        V3        -1.0
+ A  U1XU2               U1 * U2
+ A  EXP12               EXP( U1XU2 )
+ A  TEMP                EXP12 * ( 2.0 + U1XU2 )
+ F                      EXP12 * U1
+ G  U1                  EXP12 * ( 1.0 + U1XU2 )
+ G  U2                  EXP12 * U1 * U1
+ H  U1        U1        U2 * TEMP
+ H  U1        U2        U1 * TEMP
+ H  U2        U2        EXP12 * U1**3
+
+ENDATA

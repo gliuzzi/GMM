@@ -1,0 +1,106 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          BOX
+
+*   Problem :
+*   *********
+
+*   A quartic function with a non-trivial sparsity pattern
+
+*   Source:
+*   N. Gould, private communication.
+
+*   SIF input: N. Gould, Jan 2009
+
+*   classification OUR2-AN-V-0
+
+*   number of variables
+
+*IE N                   10             $-PARAMETER
+*IE N                   100            $-PARAMETER
+*IE N                   1000           $-PARAMETER
+ IE N                   10000          $-PARAMETER     original value
+*IE N                   100000         $-PARAMETER
+
+*   other parameter definitions
+
+ IE 1                   1
+ IE 2                   2
+ IA N-1       N         -1
+ I/ N/2       N                        2
+ RI RN-1      N-1          
+ RM -RN-1     RN-1      -1.0
+
+VARIABLES
+
+ DO I         1                        N
+ X  X(I)
+ ND
+
+GROUPS
+
+*  objective function
+
+ DO I         1                        N
+ XN A(I)      X(I)       1.0           X(1)       1.0
+ XN B(I)      X(I)       1.0           X(N)       1.0
+ XN C(I)      X(I)       1.0           X(N/2)     1.0
+ XN D         X(I)      -0.5
+ XN Q(I)      X(I)       1.0
+ OD
+
+BOUNDS
+
+ FR BOX       'DEFAULT'
+
+GROUP TYPE
+
+ GV SQR       V
+ GV QUARTIC   V
+
+GROUP USES
+
+ DO I         1                        N
+ XT A(I)      SQR
+ XT B(I)      SQR
+ XT C(I)      SQR
+ XT Q(I)      QUARTIC
+ ND
+
+OBJECT BOUND
+
+ XL BOX       -RN-1
+
+*   Solution
+
+*LO SOLTN               ???
+
+ENDATA
+
+*********************
+* SET UP THE GROUPS *
+* ROUTINE           *
+*********************
+
+GROUPS        BOX
+
+TEMPORARIES
+
+ R  VSQ
+
+INDIVIDUALS
+
+ T  SQR
+ F                      V * V
+ G                      V + V
+ H                      2.0
+
+ T  QUARTIC
+ A  VSQ                 V * V
+ F                      VSQ * VSQ
+ G                      4.0 * V * VSQ
+ H                      12.0 * VSQ
+
+ENDATA
