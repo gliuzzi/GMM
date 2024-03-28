@@ -1,8 +1,8 @@
 clear all
 close all
 
-T = readtable("ris_20231206.txt","delimiter",'|');
-T = T(1:2282,:);
+T = readtable("risultati.txt","delimiter",'|');
+T = T(1:978,:);
 
 %%%
 % le colonne di T sono le seguenti:
@@ -83,27 +83,13 @@ end
 
 Istaz = [];
 I = [];
-QPS = 0;
-LBFGS = 0;
 for ip = 1:np
-    bestf = min(Hfval(ip,:));
-    worsf = max(Hfval(ip,:));
 
-    if not(Hgrad(ip,6) <= 1.e-3)
-        LBFGS = LBFGS +1;
-    end
-    if not(Hgrad(ip,4) <= 1.e-3)
-        QPS = QPS +1;
-    end
-    
     if max(Hfval(ip,:)) - min(Hfval(ip,:)) < 1.e-3
         I = [I ip];
     end
 
 end
-
-%disp(QPS)
-%disp(LBFGS)
 
 LS = {
     '--k^', %'-bs', %GMM1
@@ -133,48 +119,52 @@ confronti = {[1,2,3,5]};
 confronti = {[1,2,3,4]};
 confronti = {[3,4]};
 
-nc = size(confronti,2);
+compare = {[1,2,3,5],[1,2,3,4],[3,4]};
 
-figure('Position',[0,0,2000,600])
-i = 1;
-for pp = confronti
-    pair = pp{1};
-    subplot(nc,2,i);
-    perf_profile(Htime(:,pair),SS(pair),'Time',LS(pair),CS(pair))
-    subplot(nc,2,i+1)
-    perf_profile(Hiter(:,pair),SS(pair),'Iter',LS(pair),CS(pair))
-    i = i+1;
-end
+for confronti = compare
+    nc = size(confronti,2);
 
-figure('Position',[0,0,2000,600])
-i = 1;
-for pp = confronti
-    pair = pp{1};
-    I = [];
-    nbest = zeros(1,size(pair,2));
-    for ip = 1:np
-        bestf = min(Hfval(ip,pair));
-        worsf = max(Hfval(ip,pair));
-    
-        if worsf - bestf < 1.e-3
-            I = [I ip];
-        else
-            [v,ind] = min(Hfval(ip,pair));
-            for ii = 1:size(pair,2)
-                if abs(v-Hfval(ip,pair(ii))) < 1.e-3
-                    nbest(1,ii) = nbest(1,ii)+1;
+    figure('Position',[0,0,2000,600])
+    i = 1;
+    for pp = confronti
+        pair = pp{1};
+        subplot(nc,2,i);
+        perf_profile(Htime(:,pair),SS(pair),'Time',LS(pair),CS(pair))
+        subplot(nc,2,i+1)
+        perf_profile(Hiter(:,pair),SS(pair),'Iter',LS(pair),CS(pair))
+        i = i+1;
+    end
+
+    figure('Position',[0,0,2000,600])
+    i = 1;
+    for pp = confronti
+        pair = pp{1};
+        I = [];
+        nbest = zeros(1,size(pair,2));
+        for ip = 1:np
+            bestf = min(Hfval(ip,pair));
+            worsf = max(Hfval(ip,pair));
+
+            if worsf - bestf < 1.e-3
+                I = [I ip];
+            else
+                [v,ind] = min(Hfval(ip,pair));
+                for ii = 1:size(pair,2)
+                    if abs(v-Hfval(ip,pair(ii))) < 1.e-3
+                        nbest(1,ii) = nbest(1,ii)+1;
+                    end
                 end
             end
+
         end
-    
-    end
-    subplot(nc,2,i);
-    perf_profile(Htime(I,pair),SS(pair),'Time',LS(pair),CS(pair))
-    subplot(nc,2,i+1)
-    perf_profile(Hiter(I,pair),SS(pair),'Iter',LS(pair),CS(pair))
-    i = i+1;
-    nu = size(I,2);
-    for p = 1:size(pair,2)
-        fprintf("%20s wins on %3d/%3d\n",SS{pair(p)},nbest(1,p),np)
+        subplot(nc,2,i);
+        perf_profile(Htime(I,pair),SS(pair),'Time',LS(pair),CS(pair))
+        subplot(nc,2,i+1)
+        perf_profile(Hiter(I,pair),SS(pair),'Iter',LS(pair),CS(pair))
+        i = i+1;
+        nu = size(I,2);
+        for p = 1:size(pair,2)
+            fprintf("%20s wins on %3d/%3d\n",SS{pair(p)},nbest(1,p),np)
+        end
     end
 end
