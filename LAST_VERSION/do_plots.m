@@ -55,8 +55,6 @@ end
 [~, ns] = size(S);
 [~, np] = size(P);
 
-%keyboard
-
 Htime = zeros(np,ns);
 Hiter = zeros(np,ns);
 Hfval = zeros(np,ns);
@@ -104,20 +102,12 @@ for ip = 1:np
 
 end
 
-disp(QPS)
-disp(LBFGS)
+%disp(QPS)
+%disp(LBFGS)
 
 LS = {
     '--k^', %'-bs', %GMM1
-    '-bx', 
-    '-bh',
     '-ko', %'--k^', %GMM3
-    '--ys',
-    '--yh',
-    '--yp',
-    '--y<',
-    '--cs',
-    '--ch',
     '-.ks', %'-.ro', %GMM2
     '-rx', %'-g*', %L-BFGS
     '-bv' %'-mv' %CG    
@@ -125,15 +115,7 @@ LS = {
 
 CS = {
     [0 0.5 1], %GMM1
-    '-bx', 
-    '-bh',
     [0 0.5 0.5], %GMM3
-    '--ys',
-    '--yh',
-    '--yp',
-    '--y<',
-    '--cs',
-    '--ch',
     [0 0 1], %GMM2
     [1 0 0], %L-BFGS
     [0.5 1 0] %CG    
@@ -141,30 +123,15 @@ CS = {
 
 SS = {
 'GMM$_1$',
-'QPS-Diagonale1',
-'QPS-Diagonale2',
 'GMM$_3$',
-'QPS-Diagonale4',
-'QPS-Diagonale5',
-'QPS-Diagonale6',
-'QPS-Diagonale7',
-'QPS-Diagonale8',
-'QPS-Newton',
 'GMM$_2$',
 'L-BFGS$_{scipy}$',
 'CG$_{scipy}$'
 };
 
-confronti = {[4,12], [5,12], [11,12], [1,12]};
-confronti = {[4,13], [5,13], [11,13], [1,13], [11,1]};
-confronti = {[4,13], [11,1]};
-confronti = {[4,13,11,1,12],[11,12]};
-%confronti = {[2,3,4,5,6,7,8,9]};
-confronti = {[9,13]};
-
-confronti = {[1,11,4,13]};
-confronti = {[1,11,4,12]};
-confronti = {[11,12]};
+confronti = {[1,2,3,5]};
+confronti = {[1,2,3,4]};
+confronti = {[3,4]};
 
 nc = size(confronti,2);
 
