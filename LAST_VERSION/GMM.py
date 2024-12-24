@@ -174,10 +174,19 @@ class Solver:
             if n_iters ==0:
                 f, g = f_1, g_1
             else:
+                #-------------------------------------------------------
+                # stopping criterion on the variation of function values
+                #-------------------------------------------------------
+                testnew=abs(f- fExp)/np.maximum(np.maximum(abs(f),abs(fExp)),1)
+                if(testnew <= 1.e-50):
+                    break
                 f = fExp
                 g = self.g(xk)
+            #--------------------------------------------------------------------------------------------------------
+            # stopping criteria on the infinity norm of the gradient or on the maximum number of function evaluations
+            #--------------------------------------------------------------------------------------------------------
             g_norm_prev = g_norm
-            g_norm = np.linalg.norm(g, self.gtol_ord)
+            g_norm = np.linalg.norm(g, self.gtol_ord)            
             if g_norm < self.grad_tol or n_iters >= self.max_iters or f == -np.inf or np.isnan(f):
                 break
 
@@ -235,7 +244,7 @@ class Solver:
 
         return res_tab
 
-problems = ['ARGLINA','ARGLINB','ARGLINC','ARGTRIGLS','BDEXP','BOX','BOXPOWER','BROWNAL',
+problems = ['ARGLINB','ARGLINC','ARGTRIGLS','BDEXP','BOX','BOXPOWER','BROWNAL',
             'BROYDN3DLS','BROYDNBDLS','CHEBYQAD','CHNRSNBM','CLPLATEA','CURLY30','CVXBQP1',
             'CYCLIC3LS','CYCLOOCFLS','CYCLOOCTLS','DEGDIAG','DEGTRID','ARWHEAD','BDQRTIC',
             'BROYDN7D','BRYBND','CHAINWOO','CLPLATEB','CLPLATEC','COSINE','CRAGGLVY','CURLY10',
@@ -257,7 +266,10 @@ problems = ['ARGLINA','ARGLINB','ARGLINC','ARGTRIGLS','BDEXP','BOX','BOXPOWER','
             'TORSIOND','TORSIONE','TORSIONF','TQUARTIC','TRIDIA','TRIGON1','TRIGON2','VANDANMSLS',
             'VARDIM','VAREIGVL','WOODS']
 
+problems = ['DEGTRID']
+
 solvers = ['GMM1','GMM3','GMM2','scipy_lbfgs', 'scipy_cg']
+solvers = ['GMM2']
 
 print(len(problems))
 res_tutti = []
@@ -267,7 +279,7 @@ for p in problems:
 
     res_parz = []
     S = Solver(P)
-    res = S.test_problem(solvers, max_iters=5000, eps_grad=1e-3)
+    res = S.test_problem(solvers, max_iters=5000, eps_grad=1e-6)
     for i,r in enumerate(res):
         res_tutti.append(r)
         res_parz.append(r)

@@ -142,6 +142,7 @@ class Newton:
                         ba=np.sum(muv*d1**2)
                         bc=np.dot(d2.T,yv)
                         bb=np.dot(d1.T,yv)
+                    print(ba,bb,bc)
                     Bab = np.array([[ba,bb],[bb,bc]])
                     return gab, Bab
             else:
@@ -369,7 +370,9 @@ class Newton:
             HP[1,1]=H[1,1]+delta2
             return HP
             
-        def perturb_Cholesky_teor(self,g,H,norma_g,eps_H,d1_norm,d2_norm):
+        def perturb_Cholesky(self,g,H,norma_g,eps_H,d1_norm,d2_norm):
+            #print(' Cholesky')
+            #input()
             HT=np.zeros(shape=(2,2))
             
             HT[0,0]=H[0,0]/(d1_norm*d1_norm)
@@ -390,9 +393,10 @@ class Newton:
                   l22=np.sqrt(HT[1,1]-l21*l21)
                else:
                   l22=eps_H
-               lt11=l11*d1_norm*d1_norm
-               lt21=l21*d1_norm*d2_norm
-               lt22=l22*d2_norm*d2_norm
+                  
+               lt11=l11*d1_norm
+               lt21=l21*sqrt(d1_norm*d2_norm)
+               lt22=l22*d2_norm
                y1=-g[0]/lt11
                y2=-(g[1]+lt21*y1)/lt22
             
@@ -401,34 +405,10 @@ class Newton:
             except:
                print('except Cholesky')
                d=-g/norma_g
+               #print(' d =',d)
             return d
             
-        def perturb_Cholesky(self,g,H,norma_g,eps_H,d1_norm):
-            try:
-               d=np.zeros(2)
-         
-               if H[0,0] > 1.e-12*min(norma_g**2,1.e0):
-                  l11=np.sqrt(H[0,0]/d1_norm**2)
-               else:
-           	      l11=eps_H
-
-               l21=(H[1,0]/(d1_norm*d2_norm))/l11
-            
-               if H[1,1]-l21*l21 > 1.e-12*min(norma_g**2,1.e0):
-                  l22=np.sqrt(H[1,1]-l21*l21)
-               else:
-                  l22=eps_H
-                
-               y1=-g[0]/l11
-               y2=-(g[1]+l21*y1)/l22
-            
-               d[1]=y2/l22
-               d[0]=(y1-l21*d[1])/l11           
-            except:
-               print('except Cholesky')
-               d=-g/norma_g
-            return d          
-
+  
         def linesearch_armijo(self,n,x,f,d,gd,gamma,nf,funct):
     
             alfa=1.
@@ -490,7 +470,8 @@ class Newton:
             f_alfa=f_min 
             return alfa,f_alfa,nf            
 
-        def direction(self,g,H,norma_g,n,x,n_iter_glob,var,d2,d2_norm):
+        #def direction(self,g,H,norma_g,n,x,n_iter_glob,var,d2,d1_norm):
+        def direction(self,g,H,norma_g,n,x,n_iter_glob,var,d1_norm,d2_norm):
             eps_H=10**-6
             iprintdir=True
             iprintdir=False
@@ -502,7 +483,9 @@ class Newton:
                 d[1]=0.
                 gd=np.dot(g.T,d)
                 return d, gd
-
+            #H = np.reshape(H,(2,2))
+            #print(H,H.shape)
+            #print(g)
             try:
                 d= np.linalg.solve(H,-g)
             except:
@@ -520,11 +503,11 @@ class Newton:
            
             norma_d=np.sqrt(np.dot(d.T,d))
 
-            if((gd>-(1.e-12*np.minimum(norma_g,1.e0))*(1.e-12*np.minimum(norma_g,1.e0))) or (norma_d>10**18*norma_g)):
+            if((gd>-(1.e-12*np.minimum(norma_g,1.e0))*(1.e-12*np.minimum(norma_g,1.e0))) or (norma_d>10**24*norma_g)):
 
-                if var >= 2 :
-                    d2_norm=np.linalg.norm(d2,2)	
-                d = self.perturb_Cholesky(g,H,norma_g,eps_H,d2_norm)
+                #if var >= 2 and (var <=10):
+                    #d2_norm=np.linalg.norm(d2,2)	
+                d = self.perturb_Cholesky(g,H,norma_g,eps_H,d1_norm,d2_norm)
 
                 gd=np.dot(g.T,d)
 
@@ -551,9 +534,10 @@ class Newton:
             var=self.var
 
             d1_norm=np.linalg.norm(d1,2)
+            d2_norm=0
             
             f_min=1.e36
-            iprint=True
+            #iprint=True
             iprint=False
 			
             gamma=1.e-6
@@ -609,6 +593,7 @@ class Newton:
                    g,H=self.gradiente_Hessiano_M( n, f, f_1, funct, d1,d2, x_1[0], x_1[1],n_iter_glob,d1_norm,d2_norm)
                 if (var == 11): 
                    d2_norm=np.linalg.norm(d2,2) 
+                   #print('did2: ',d1,d2)
                    g,H=self.gradiente_Hessiano_Hd( n, f, f_1, funct,x_glob, grad,d1,d2, x_1[0], x_1[1],n_iter_glob,d1_norm,d2_norm)               
                 if (var == 2):
                    g,H=self.gradiente_Hessiano_B( n, f, f_1,g_1,funct, d1,d2, x_1[0], x_1[1],n_iter_glob,d1_norm)
@@ -617,11 +602,12 @@ class Newton:
                    g,H=self.gradiente_Hessiano_D( n, f, f_1, x, x_1, g_1, funct, d1,d2, x_1[0], x_1[1],n_iter_glob,var,d1_norm)
                  
                 norma_g = np.linalg.norm(g,2)
+                file_10 = open("risulati.txt","w") 
                 if iprint:
                    print('grad=',g)
                    print  ("n_iter=",n_iter,"  nf=",nf,"  f=",f,"  norma_grad=",norma_g)
                    print  ("n_iter=",n_iter,"  nf=",nf,"  f=",f,"  norma_grad=",norma_g,file=file_10)
-                   input()
+                   #input()
                 if(norma_g <= eps):
                     if iprint:
                         print("         ")
@@ -640,10 +626,13 @@ class Newton:
                     d=-np.dot(H,g)
                     gd=np.dot(g.T,d)
                 else:
-                    if var >= 3:
-                        d,gd = self.direction(g,H,norma_g,n,x,n_iter_glob,var,d2,d1_norm)
-                    else:
-                        d,gd = self.direction(g,H,norma_g,n,x,n_iter_glob,var,d2,d2_norm)
+                    if var >= 2 and (var <=10):
+                        d2_norm=np.linalg.norm(d2,2)
+                    d,gd = self.direction(g,H,norma_g,n,x,n_iter_glob,var,d1_norm,d2_norm)
+                    #if var >= 3:
+                        #d,gd = self.direction(g,H,norma_g,n,x,n_iter_glob,var,d2,d1_norm)
+                    #else:
+                        #d,gd = self.direction(g,H,norma_g,n,x,n_iter_glob,var,d2,d2_norm)
                     
                 alfa,f_alfa,nf=self.linesearch_armijo(n,x,f,d,gd,gamma,nf,funct)
 
