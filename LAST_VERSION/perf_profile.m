@@ -47,8 +47,8 @@ end
 % Axis properties are set so that failures are not shown, but with the
 % max_ratio data points shown. This highlights the "flatline" effect.
 %axis([1 5 0 1]);
-%axis([1 100 0 1]);
-axis([1 max_ratio 0 1]);
+axis([1 100 0 1]);
+%axis([1 max_ratio 0 1]);
 legend(solvers,'Location','SouthEast','Interpreter','latex');
 title(Title);
 xlabel('performance ratio, \alpha');

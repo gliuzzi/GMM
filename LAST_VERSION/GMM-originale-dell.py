@@ -1,12 +1,9 @@
 import numpy as np
 import pycutest
-import pycgdescent as cg
 from time import time, sleep
 from tabulate import tabulate
 from Newton import *
 from scipy.optimize import minimize
-import sys
-import argparse
 
 class Problem:
     def __init__(self, name, n=None):
@@ -95,8 +92,6 @@ class Solver:
             sol, info = self.solvePlaneSearch_Newton(var=5)
         elif  self.method == 'GMM1':
             sol, info = self.solvePlaneSearch_Newton(var=11)
-        elif self.method == 'Hager':
-            sol, info = self.solveHager()    
         elif self.method == 'scipy_lbfgs':
             if not np.isinf(self.gtol_ord):
                 print('CANNOT SET DIFFERENT NORM THAN INFTY-NORM FOR L-BFGS')
@@ -165,21 +160,6 @@ class Solver:
         best_f,best = inner_NN([alpha0,beta0],[alpha_1, beta_1],f_1,g_1,x)
         return best,best_f
 
-    def solveHager(self):
-        options = cg.OptimizeOptions(StopRule=True, StopFac=0, maxit=self.max_iters)
-
-        def obf(t):
-            return self.f(t)
-
-        def obg(jac_store, t):
-            j = self.g(t)
-            jac_store[:] = j[:]
-            return jac_store
-
-        r = cg.minimize(fun=obf, x0=self.problem.get_x0(), jac=obg, tol=self.grad_tol, options=options)
-
-        return r.x, {"iters": r.nit, "f": r.fun, "g_norm": np.linalg.norm(self.problem.g(r.x), self.gtol_ord)}
-
     def solvePlaneSearch_Newton(self, var=1):
         xk = self.problem.get_x0()
         n_iters = 0
@@ -194,19 +174,10 @@ class Solver:
             if n_iters ==0:
                 f, g = f_1, g_1
             else:
-                #-------------------------------------------------------
-                # stopping criterion on the variation of function values
-                #-------------------------------------------------------
-                testnew=abs(f- fExp)/np.maximum(np.maximum(abs(f),abs(fExp)),1)
-                if(testnew <= 1.e-50):
-                    break
                 f = fExp
                 g = self.g(xk)
-            #--------------------------------------------------------------------------------------------------------
-            # stopping criteria on the infinity norm of the gradient or on the maximum number of function evaluations
-            #--------------------------------------------------------------------------------------------------------
             g_norm_prev = g_norm
-            g_norm = np.linalg.norm(g, self.gtol_ord)            
+            g_norm = np.linalg.norm(g, self.gtol_ord)
             if g_norm < self.grad_tol or n_iters >= self.max_iters or f == -np.inf or np.isnan(f):
                 break
 
@@ -264,51 +235,32 @@ class Solver:
 
         return res_tab
 
-parser = argparse.ArgumentParser(prog='GMM',description='Algorithm GMM')
-parser.add_argument('-v','--version',action='store_true',help='Print version number')
-parser.add_argument('-p','--problem',nargs=1,type=str,
-                             default=['ARGLINA'],
-                             help='SIF name of the problem to be solved')
-args = parser.parse_args(sys.argv[1:])
-if args.version:
-    print('\nGMM.py version 0.1\n')
+problems = ['ARGLINB','ARGLINC','ARGTRIGLS','BDEXP','BOX','BOXPOWER','BROWNAL',
+            'BROYDN3DLS','BROYDNBDLS','CHEBYQAD','CHNRSNBM','CLPLATEA','CURLY30','CVXBQP1',
+            'CYCLIC3LS','CYCLOOCFLS','CYCLOOCTLS','DEGDIAG','DEGTRID','ARWHEAD','BDQRTIC',
+            'BROYDN7D','BRYBND','CHAINWOO','CLPLATEB','CLPLATEC','COSINE','CRAGGLVY','CURLY10',
+            'CURLY20','DEGTRID2','DIAGPQB','DIAGPQE','DIAGPQT','DIXMAANA','DIXMAANB','DIXMAANC',
+            'DIXMAAND','DIXMAANE','DIXMAANF','DIXMAANG','DIXMAANH','DIXMAANI','DIXMAANJ','DIXMAANK',
+            'DIXMAANL','DIXMAANM','DIXMAANN','DIXMAANO','DIXMAANP','DIXON3DQ','DQDRTIC','DQRTIC',
+            'EDENSCH','EIGENALS','EIGENBLS','EIGENCLS','ENGVAL1','EXTROSNB','FLETBV3M','FLETCBV2',
+            'FLETCHCR','FMINSRF2','FMINSURF','FREUROTH','GENHUMPS','GENROSE','GENROSEB','GRIDGENA',
+            'HILBERTA','HILBERTB','INDEFM','INTEQNELS','JNLBRNG1','JNLBRNG2','JNLBRNGA','JNLBRNGB',
+            'KSSLS','LIARWHD','LINVERSE','LMINSURF','LUKSAN11LS','LUKSAN12LS','LUKSAN13LS','LUKSAN14LS',
+            'LUKSAN15LS','LUKSAN16LS','LUKSAN17LS','LUKSAN21LS','LUKSAN22LS','MANCINO','MCCORMCK',
+            'MODBEALE','MOREBV','NCB20','NCB20B','NLMSURF','NOBNDTOR','NONCVXU2','NONCVXUN','NONDIA',
+            'NONDQUAR','NONMSQRT','NONSCOMP','OBSTCLAE','OBSTCLAL','OBSTCLBL','OBSTCLBM','OBSTCLBU',
+            'ODC','ODNAMUR','OSCIGRAD','OSCIPATH','PENALTY1','PENALTY2','PENALTY3','PENTDI','POWELLBC',
+            'POWELLSG','POWER','PRICE3','PROBPENL','QING','QRTQUAD','QUARTC','SBRYBND','SCHMVETT',
+            'SCOSINE','SCURLY10','SCURLY20','SCURLY30','SENSORS','SINEALI','SINQUAD','SPARSINE',
+            'SPARSQUR','SPIN2LS','SPINLS','SROSENBR','SSBRYBND','SSCOSINE','STRTCHDV','TESTQUAD',
+            'TOINTGSS','TORSION1','TORSION3','TORSION4','TORSION5','TORSION6','TORSIONA','TORSIONC',
+            'TORSIOND','TORSIONE','TORSIONF','TQUARTIC','TRIDIA','TRIGON1','TRIGON2','VANDANMSLS',
+            'VARDIM','VAREIGVL','WOODS']
 
-probname = args.problem[0]
+#problems = ['DEGTRID']
 
-if probname == '':
-    problems = ['ARGLINB','ARGLINC','ARGTRIGLS','BDEXP','BOX','BOXPOWER','BROWNAL',
-                'BROYDN3DLS','BROYDNBDLS','CHEBYQAD','CHNRSNBM','CLPLATEA','CURLY30','CVXBQP1',
-                'CYCLIC3LS','CYCLOOCFLS','CYCLOOCTLS','DEGDIAG','DEGTRID','ARWHEAD','BDQRTIC',
-                'BROYDN7D','BRYBND','CHAINWOO','CLPLATEB','CLPLATEC','COSINE','CRAGGLVY','CURLY10',
-                'CURLY20','DEGTRID2','DIAGPQB','DIAGPQE','DIAGPQT','DIXMAANA','DIXMAANB','DIXMAANC',
-                'DIXMAAND','DIXMAANE','DIXMAANF','DIXMAANG','DIXMAANH','DIXMAANI','DIXMAANJ','DIXMAANK',
-                'DIXMAANL','DIXMAANM','DIXMAANN','DIXMAANO','DIXMAANP','DIXON3DQ','DQDRTIC','DQRTIC',
-                'EDENSCH','EIGENALS','EIGENBLS','EIGENCLS','ENGVAL1','EXTROSNB','FLETBV3M','FLETCBV2',
-                'FLETCHCR','FMINSRF2','FMINSURF','FREUROTH','GENHUMPS','GENROSE','GENROSEB','GRIDGENA',
-                'HILBERTA','HILBERTB','INDEFM','INTEQNELS','JNLBRNG1','JNLBRNG2','JNLBRNGA','JNLBRNGB',
-                'KSSLS','LIARWHD','LINVERSE','LMINSURF','LUKSAN11LS','LUKSAN12LS','LUKSAN13LS','LUKSAN14LS',
-                'LUKSAN15LS','LUKSAN16LS','LUKSAN17LS','LUKSAN21LS','LUKSAN22LS','MANCINO','MCCORMCK',
-                'MODBEALE','MOREBV','NCB20','NCB20B','NLMSURF','NOBNDTOR','NONCVXU2','NONCVXUN','NONDIA',
-                'NONDQUAR','NONMSQRT','NONSCOMP','OBSTCLAE','OBSTCLAL','OBSTCLBL','OBSTCLBM','OBSTCLBU',
-                'ODC','ODNAMUR','OSCIGRAD','OSCIPATH','PENALTY1','PENALTY2','PENALTY3','PENTDI','POWELLBC',
-                'POWELLSG','POWER','PRICE3','PROBPENL','QING','QRTQUAD','QUARTC','SBRYBND','SCHMVETT',
-                'SCOSINE','SCURLY10','SCURLY20','SCURLY30','SENSORS','SINEALI','SINQUAD','SPARSINE',
-                'SPARSQUR','SPIN2LS','SPINLS','SROSENBR','SSBRYBND','SSCOSINE','STRTCHDV','TESTQUAD',
-                'TOINTGSS','TORSION1','TORSION3','TORSION4','TORSION5','TORSION6','TORSIONA','TORSIONC',
-                'TORSIOND','TORSIONE','TORSIONF','TQUARTIC','TRIDIA','TRIGON1','TRIGON2','VANDANMSLS',
-                'VARDIM','VAREIGVL','WOODS']
-
-    problems = ['CYCLOOCFLS']
-else:
-    problems = [probname]
-
-solvers = ['GMM2']
-solvers = ['scipy_lbfgs', 'Hager']
-solvers = ['GMM1','GMM3','GMM2','scipy_lbfgs', 'Hager']
-solvers = ['Hager']
-solvers = ['Hager']
 solvers = ['GMM1','GMM3','GMM2','scipy_lbfgs', 'scipy_cg']
-solvers = ['GMM1','GMM3','GMM2','scipy_lbfgs', 'scipy_cg', 'Hager']
+#solvers = ['GMM2']
 
 print(len(problems))
 res_tutti = []
@@ -324,24 +276,16 @@ for p in problems:
         res_parz.append(r)
     r=["--", "--", "--", "--", "--", "--", "--", "--", "--", "--", "--", "--"]
     res_tutti.append(r)
-    r=["--", "--", "--", "--", "--", "--", "--", "--", "--"]
-    res_parz.append(r)
     print(tabulate(res_parz, headers=['Algorithm', 'prob', 'n', 't', 'n_it', 'f_opt', \
                 'g_norm', 'fevals', 'gevals'], tablefmt='orgtbl')
           )
-    fr=open("risultati.txt","a")
-    #print(tabulate(res_parz, headers=['Algorithm', 'prob', 'n', 't', 'n_it', 'f_opt', \
-    #            'g_norm', 'fevals', 'gevals'], tablefmt='orgtbl'),file=fr)
-    print(tabulate(res_parz, tablefmt='orgtbl'),file=fr)
-    fr.close()
 
 table = tabulate(res_tutti, headers=['Algorithm','prob', 'n', 't', 'n_it', 'f_opt', \
     'g_norm', 'fevals', 'gevals'], tablefmt = 'orgtbl')
 print(table)
-
-#fr=open("risultati.txt","w")
-#print(table,file=fr)
-#fr.close()
+fr=open("risultati.txt","w")
+print(table,file=fr)
+fr.close()
 table = tabulate(res_tutti, headers=['Algorithm','prob', 'n', 't', 'n_it', 'f_opt', \
     'g_norm', 'fevals', 'gevals'], tablefmt = 'latex')
 print(table)

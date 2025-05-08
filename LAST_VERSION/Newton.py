@@ -142,7 +142,7 @@ class Newton:
                         ba=np.sum(muv*d1**2)
                         bc=np.dot(d2.T,yv)
                         bb=np.dot(d1.T,yv)
-                    print(ba,bb,bc)
+                    #print(ba,bb,bc)
                     Bab = np.array([[ba,bb],[bb,bc]])
                     return gab, Bab
             else:
