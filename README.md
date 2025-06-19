@@ -36,9 +36,9 @@ The following arguments shall be specified:
 
 
 ## Acknowledgements
-The folder `Preliminary_Experiments` contains the code used to obtain the preliminar results presented in Section 7 of the paper. In the same folder the `.txt` file contains the outcome of those experiments.
+The folder `Preliminary_Experiments` contains the code used to obtain the preliminary results presented in Section 7 of the paper. In the same folder the `.txt` file contains the outcomes of those experiments.
 
-The outcome of the other experiments reported in Section 7 are avaialble in the folder `Results`. The performance profiles reported in the paper are avialable in the same folder.
+The results  of the other experiments reported in Section 7 are avaialble in the `Results` folder. The performance profiles shown in the paper are also avialable in the same folder.
 
 In case you employed our code for research purposes, please cite:
 
