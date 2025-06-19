@@ -3,10 +3,10 @@ Implementation of a globally convergent gradient method with momentum presented 
 
 [M. Lapucci, G. Liuzzi, S. Lucidi, D.Pucci and M. Sciandrone - A Globally Convergent Gradient Method with Momentum - arXiv:2403.17613 [math.OC]](https://arxiv.org/abs/2403.17613)
 
-<div style="display: flex; gap: 10px;">
-  <iframe src="Results/plots_cutest_gmm_lbfgs/n_it.pdf" width="45%" height="500px"></iframe>
-  <iframe src="Results/plots_cutest_gmm_lbfgs/n_it.pdf" width="45%" height="500px"></iframe>
-</div>
+<p float="left">
+  <img src="Results/plots_cutest_gmm_lbfgs/t.png" width="45%" />
+  <img src="Results/plots_cutest_gmm_lbfgs/n_it.png" width="45%" />
+</p>
 
 ## Installation
 
