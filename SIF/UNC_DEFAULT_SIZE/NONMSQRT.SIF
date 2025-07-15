@@ -1,0 +1,179 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          NONMSQRT
+
+*   Problem :
+*   *********
+
+*   The "non-matrix square root problem" obtained from an error in
+*   writing a correct matrix square root problem B by Nocedal and Liu.
+
+*   Source:
+*   Ph. Toint
+
+*   SIF input: Ph. Toint, Dec 1989.
+
+*   classification SUR2-AN-V-0
+
+*   Dimension of the matrix ( at least 3)
+
+*IE P                   3              $-PARAMETER n = 9    original value
+*IE P                   7              $-PARAMETER n = 49
+*IE P                   10             $-PARAMETER n = 100
+*IE P                   23             $-PARAMETER n = 529
+*IE P                   32             $-PARAMETER n = 1024
+ IE P                   70             $-PARAMETER n = 4900
+
+*   Number of variables
+
+ I* N         P                        P
+
+*   other parameter definitions
+
+ IE 1                   1
+
+*   Define the matrix B
+
+ RE K                   0.0
+
+ DO I         1                        P
+ DO J         1                        P
+ RA K         K         1.0
+ R* K2        K                        K
+ A( B(I,J)    SIN                      K2
+ ND
+
+ RE B3,1                0.0
+
+*  Compute A = B * B
+
+ DO I         1                        P
+ DO J         1                        P
+ AE A(I,J)              0.0
+
+ DO T         1                        P
+ A* PROD      B(I,T)                   B(T,J)
+ A+ A(I,J)    A(I,J)                   PROD
+
+ ND
+
+VARIABLES
+
+ DO I         1                        P
+ DO J         1                        P
+ X  X(I,J)
+ ND
+
+GROUPS
+
+ DO I         1                        P
+ DO J         1                        P
+ XN G(I,J)
+ ND
+
+CONSTANTS
+
+ DO I         1                        P
+ DO J         1                        P
+ Z  NONMSQRT  G(I,J)                   A(I,J)
+ ND
+
+BOUNDS
+
+ FR NONMSQRT  'DEFAULT'
+
+START POINT
+
+ RE K                   0.0
+
+ DO I         1                        P
+ DO J         1                        P
+ RA K         K         1.0
+ R* K2        K                        K
+ R( SK2       SIN                      K2
+ RM -4SK2/5   SK2       -0.8
+ A+ XIJ       B(I,J)                   -4SK2/5
+ Z  NONMSQRT  X(I,J)                   XIJ
+ ND
+
+ELEMENT TYPE
+
+ EV 2PR       XIT                      XTJ
+
+ELEMENT USES
+
+ DO I         1                        P
+ DO J         1                        P
+ DO K         1                        P
+ XT E(I,J,K)  2PR
+ ZV E(I,J,K)  XIT                      X(I,K)
+ ZV E(I,J,K)  XTJ                      X(I,J)
+ ND
+
+GROUP TYPE
+
+ GV L2        GVAR
+
+GROUP USES
+
+ DO I         1                        P
+ DO J         1                        P
+
+ XT G(I,J)    L2
+
+ DO K         1                        P
+
+ XE G(I,J)    E(I,J,K)
+
+ ND
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO NONMSQRT            0.0
+
+*   Solution
+
+*LO SOLTN(3)            0.075194572
+*LO SOLTN(7)            ???
+*LO SOLTN(10)           ???
+*LO SOLTN(23)           61.327 
+*LO SOLTN(32)           ???
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      NONMSQRT
+
+INDIVIDUALS
+
+ T  2PR
+ F                      XIT * XTJ
+ G  XIT                 XTJ
+ G  XTJ                 XIT
+ H  XIT       XTJ       1.0
+
+ENDATA
+
+*********************
+* SET UP THE GROUPS *
+* ROUTINE           *
+*********************
+
+GROUPS        NONMSQRT
+
+INDIVIDUALS
+
+ T  L2
+ F                      GVAR * GVAR
+ G                      GVAR + GVAR
+ H                      2.0
+
+ENDATA

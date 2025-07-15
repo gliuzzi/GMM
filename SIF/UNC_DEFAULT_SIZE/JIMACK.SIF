@@ -1,0 +1,1253 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          JIMACK
+
+*   Problem :
+*   *********
+
+*   Source: Parallel optimization for a finite element problem
+*   from nonlinear elasticity, P. K. Jimack, School of Computer Studies,
+*   U. of Leeds, report 91.22, July 1991.
+
+*   SIF input: Nick Gould, September 1991.
+*     SAVEs removed December 3rd 2014
+
+*   classification OUR2-AN-3549-0
+
+*   A 3-D discretization of the box [-1,1]x[-1,1]x[0,DELTA] is used with
+*   N grid lines in the first two dimensions and M lines in the last.
+
+*   Number of grid lines.
+
+*   ** N.B. M and N must also be set in the ELEMENTS file and in the
+*   parameter statement in the INTEGER FUNCTION IENT which follows the
+*   ELEMENTS file.
+
+*IE M                   2              $-PARAMETER
+*IE N                   2              $-PARAMETER
+
+ IE M                   6              $-PARAMETER
+ IE N                   12             $-PARAMETER
+
+*   Problem data
+
+*   ** N.B. DELTA and EPS must also be set in the ELEMENTS file.
+
+ RE DELTA               0.1
+ RE EPS                 0.01
+
+*   Other useful parameters
+
+ IE 0                   0
+ IE 1                   1
+ IE 2                   2
+ IA M-1       M         -1
+ IA N-1       N         -1
+ I* N**2      N                        N
+ I* MN**2     M                        N**2
+ RI RMN**2    MN**2
+ RM 2RMN**2   RMN**2    2.0D+0
+ R/ SCAL      2RMN**2                  DELTA
+
+ RI RM        M
+ R/ DZ        DELTA                    RM
+ RA RM        RM        0.1
+ RI RN        N
+ RD DX        RN        2.0D+0
+ RA RN        RN        0.1
+
+VARIABLES
+
+ DO I         0                        N
+ DO J         0                        N
+ DO K         0                        M
+ X  AX(I,J,K)
+ X  AY(I,J,K)
+ X  AZ(I,J,K)
+ ND
+
+GROUPS
+
+ ZN OBJ       'SCALE'                  SCAL
+
+BOUNDS
+
+ FR JIMACK    'DEFAULT'
+
+START POINT
+
+*  start with the identity map
+
+ RE RX                  -1.0D+0
+ DO I         0                        N
+
+ RE RY                  -1.0D+0
+ DO J         0                        N
+
+ RE RZ                  0.0D+0
+ DO K         0                        M
+
+ Z  JIMACK    AX(I,J,K)                RX
+ Z  JIMACK    AY(I,J,K)                RY
+ Z  JIMACK    AZ(I,J,K)                RZ
+
+ R+ RZ        RZ                       DZ
+ OD K
+
+ R+ RY        RY                       DX
+ OD J
+
+ R+ RX        RX                       DX
+ OD I
+
+ELEMENT TYPE
+
+*   INTEGRAL
+
+ EV INTEGRAL  AXLLL                    AXULL
+ EV INTEGRAL  AXLUL                    AXUUL
+ EV INTEGRAL  AXLLU                    AXULU
+ EV INTEGRAL  AXLUU                    AXUUU
+ EV INTEGRAL  AYLLL                    AYULL
+ EV INTEGRAL  AYLUL                    AYUUL
+ EV INTEGRAL  AYLLU                    AYULU
+ EV INTEGRAL  AYLUU                    AYUUU
+ EV INTEGRAL  AZLLL                    AZULL
+ EV INTEGRAL  AZLUL                    AZUUL
+ EV INTEGRAL  AZLLU                    AZULU
+ EV INTEGRAL  AZLUU                    AZUUU
+
+ EP INTEGRAL  RI                       RJ
+ EP INTEGRAL  RK
+
+ELEMENT USES
+
+ DO I         0                        N-1
+
+ IA R         I         1
+ RI RI        I
+ RA RI        RI        0.1
+
+ DO J         0                        N-1
+
+ IA S         J         1
+ RI RJ        J
+ RA RJ        RJ        0.1
+
+ DO K         0                        M-1
+
+ IA T         K         1
+ RI RK        K
+ RA RK        RK        0.1
+
+ XT E(I,J,K)  INTEGRAL
+
+*   Variables are defined at the vertices of the 3-D box.
+*   The vertices are marked ijk with i, j or k =
+*   L (lower coordinate) or U (upper cordinate).
+
+ ZV E(I,J,K)  AXLLL                    AX(I,J,K)
+ ZV E(I,J,K)  AXLUL                    AX(I,S,K)
+ ZV E(I,J,K)  AXLLU                    AX(I,J,T)
+ ZV E(I,J,K)  AXLUU                    AX(I,S,T)
+ ZV E(I,J,K)  AXULL                    AX(R,J,K)
+ ZV E(I,J,K)  AXUUL                    AX(R,S,K)
+ ZV E(I,J,K)  AXULU                    AX(R,J,T)
+ ZV E(I,J,K)  AXUUU                    AX(R,S,T)
+
+ ZV E(I,J,K)  AYLLL                    AY(I,J,K)
+ ZV E(I,J,K)  AYLUL                    AY(I,S,K)
+ ZV E(I,J,K)  AYLLU                    AY(I,J,T)
+ ZV E(I,J,K)  AYLUU                    AY(I,S,T)
+ ZV E(I,J,K)  AYULL                    AY(R,J,K)
+ ZV E(I,J,K)  AYUUL                    AY(R,S,K)
+ ZV E(I,J,K)  AYULU                    AY(R,J,T)
+ ZV E(I,J,K)  AYUUU                    AY(R,S,T)
+
+ ZV E(I,J,K)  AZLLL                    AZ(I,J,K)
+ ZV E(I,J,K)  AZLUL                    AZ(I,S,K)
+ ZV E(I,J,K)  AZLLU                    AZ(I,J,T)
+ ZV E(I,J,K)  AZLUU                    AZ(I,S,T)
+ ZV E(I,J,K)  AZULL                    AZ(R,J,K)
+ ZV E(I,J,K)  AZUUL                    AZ(R,S,K)
+ ZV E(I,J,K)  AZULU                    AZ(R,J,T)
+ ZV E(I,J,K)  AZUUU                    AZ(R,S,T)
+
+ ZP E(I,J,K)  RI                       RI
+ ZP E(I,J,K)  RJ                       RJ
+ ZP E(I,J,K)  RK                       RK
+
+ ND
+
+GROUP USES
+
+ DO I         0                        N-1
+ DO J         0                        N-1
+ DO K         0                        M-1
+ XE OBJ       E(I,J,K)
+ ND
+
+OBJECT BOUND
+
+*   Solution
+
+*LO SOLTN               ?
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      JIMACK
+
+TEMPORARIES
+
+ I  I
+ I  J
+ I  K
+ I  M
+ I  N
+ R  RM
+ R  RN
+ R  DX
+ R  DY
+ R  DZ
+ R  DELX
+ R  DELY
+ R  DELZ
+ R  DELTA
+ R  EPS
+ R  W
+ R  HALFW
+ R  F
+ R  GX(8)
+ R  GY(8)
+ R  GZ(8)
+ R  XX(64)
+ R  XY(64)
+ R  XZ(64)
+ R  YY(64)
+ R  YZ(64)
+ R  ZZ(64)
+ I  IINT
+ I  IEINT
+ M  INT
+ M  DBLE
+ F  IEINT
+
+GLOBALS
+
+*   These values must agree with those set in the SDIF file.
+
+*A  N                   2
+*A  M                   2
+ A  N                   12
+ A  M                   6
+ A  DELTA               0.1
+ A  EPS                 0.01
+
+ A  RM                  DBLE( M )
+ A  RN                  DBLE( N )
+
+ A  DX                  2.0D+0 / RN
+ A  DY                  DX
+
+ A  W                   0.577350269189
+ A  HALFW               5.0D-1 * W
+
+ A  DELX                W / RN
+ A  DELY                DX
+
+INDIVIDUALS
+
+*   Element type INTEGRAL
+
+ T  INTEGRAL
+
+ A  I                   INT( RI )
+ A  J                   INT( RJ )
+ A  K                   INT( RK )
+
+ A  RI                  DBLE( I )
+ A  RJ                  DBLE( J )
+ A  RK                  DBLE( K )
+
+ A  DZ                  DELTA / RM
+ A  DELZ                HALFW * DELTA / RM
+
+*   corners of the element.
+
+ A  IINT                IEINT( I, J, K, EPS, DELTA,
+ A+                            RI, RJ, RK,
+ A+                            DELX, DELY, DELZ, DX, DY, DZ,
+ A+                            AXLLL, AXLLU, AXLUL, AXLUU,
+ A+                            AXULL, AXULU, AXUUL, AXUUU,
+ A+                            AYLLL, AYLLU, AYLUL, AYLUU,
+ A+                            AYULL, AYULU, AYUUL, AYUUU,
+ A+                            AZLLL, AZLLU, AZLUL, AZLUU,
+ A+                            AZULL, AZULU, AZUUL, AZUUU,
+ A+                            F, GX, GY, GZ, XX, XY, XZ,
+ A+                            YY, YZ, ZZ )
+
+ F                      F
+ G  AXLLL               GX( 1 )
+ G  AXULL               GX( 2 )
+ G  AXLUL               GX( 3 )
+ G  AXUUL               GX( 4 )
+ G  AXLLU               GX( 5 )
+ G  AXULU               GX( 6 )
+ G  AXLUU               GX( 7 )
+ G  AXUUU               GX( 8 )
+ G  AYLLL               GY( 1 )
+ G  AYULL               GY( 2 )
+ G  AYLUL               GY( 3 )
+ G  AYUUL               GY( 4 )
+ G  AYLLU               GY( 5 )
+ G  AYULU               GY( 6 )
+ G  AYLUU               GY( 7 )
+ G  AYUUU               GY( 8 )
+ G  AZLLL               GZ( 1 )
+ G  AZULL               GZ( 2 )
+ G  AZLUL               GZ( 3 )
+ G  AZUUL               GZ( 4 )
+ G  AZLLU               GZ( 5 )
+ G  AZULU               GZ( 6 )
+ G  AZLUU               GZ( 7 )
+ G  AZUUU               GZ( 8 )
+
+ H  AXLLL     AXLLL     XX( 1 )
+ H  AXLLL     AXULL     XX( 9 )
+ H  AXULL     AXULL     XX( 10 )
+ H  AXLLL     AXLUL     XX( 17 )
+ H  AXULL     AXLUL     XX( 18 )
+ H  AXLUL     AXLUL     XX( 19 )
+ H  AXLLL     AXUUL     XX( 25 )
+ H  AXULL     AXUUL     XX( 26 )
+ H  AXLUL     AXUUL     XX( 27 )
+ H  AXUUL     AXUUL     XX( 28 )
+ H  AXLLL     AXLLU     XX( 33 )
+ H  AXULL     AXLLU     XX( 34 )
+ H  AXLUL     AXLLU     XX( 35 )
+ H  AXUUL     AXLLU     XX( 36 )
+ H  AXLLU     AXLLU     XX( 37 )
+ H  AXLLL     AXULU     XX( 41 )
+ H  AXULL     AXULU     XX( 42 )
+ H  AXLUL     AXULU     XX( 43 )
+ H  AXUUL     AXULU     XX( 44 )
+ H  AXLLU     AXULU     XX( 45 )
+ H  AXULU     AXULU     XX( 46 )
+ H  AXLLL     AXLUU     XX( 49 )
+ H  AXULL     AXLUU     XX( 50 )
+ H  AXLUL     AXLUU     XX( 51 )
+ H  AXUUL     AXLUU     XX( 52 )
+ H  AXLLU     AXLUU     XX( 53 )
+ H  AXULU     AXLUU     XX( 54 )
+ H  AXLUU     AXLUU     XX( 55 )
+ H  AXLLL     AXUUU     XX( 57 )
+ H  AXULL     AXUUU     XX( 58 )
+ H  AXLUL     AXUUU     XX( 59 )
+ H  AXUUL     AXUUU     XX( 60 )
+ H  AXLLU     AXUUU     XX( 61 )
+ H  AXULU     AXUUU     XX( 62 )
+ H  AXLUU     AXUUU     XX( 63 )
+ H  AXUUU     AXUUU     XX( 64 )
+
+ H  AXLLL     AYLLL     XY( 1 )
+ H  AXULL     AYLLL     XY( 2 )
+ H  AXLUL     AYLLL     XY( 3 )
+ H  AXUUL     AYLLL     XY( 4 )
+ H  AXLLU     AYLLL     XY( 5 )
+ H  AXULU     AYLLL     XY( 6 )
+ H  AXLUU     AYLLL     XY( 7 )
+ H  AXUUU     AYLLL     XY( 8 )
+ H  AXLLL     AYULL     XY( 9 )
+ H  AXULL     AYULL     XY( 10 )
+ H  AXLUL     AYULL     XY( 11 )
+ H  AXUUL     AYULL     XY( 12 )
+ H  AXLLU     AYULL     XY( 13 )
+ H  AXULU     AYULL     XY( 14 )
+ H  AXLUU     AYULL     XY( 15 )
+ H  AXUUU     AYULL     XY( 16 )
+ H  AXLLL     AYLUL     XY( 17 )
+ H  AXULL     AYLUL     XY( 18 )
+ H  AXLUL     AYLUL     XY( 19 )
+ H  AXUUL     AYLUL     XY( 20 )
+ H  AXLLU     AYLUL     XY( 21 )
+ H  AXULU     AYLUL     XY( 22 )
+ H  AXLUU     AYLUL     XY( 23 )
+ H  AXUUU     AYLUL     XY( 24 )
+ H  AXLLL     AYUUL     XY( 25 )
+ H  AXULL     AYUUL     XY( 26 )
+ H  AXLUL     AYUUL     XY( 27 )
+ H  AXUUL     AYUUL     XY( 28 )
+ H  AXLLU     AYUUL     XY( 29 )
+ H  AXULU     AYUUL     XY( 30 )
+ H  AXLUU     AYUUL     XY( 31 )
+ H  AXUUU     AYUUL     XY( 32 )
+ H  AXLLL     AYLLU     XY( 33 )
+ H  AXULL     AYLLU     XY( 34 )
+ H  AXLUL     AYLLU     XY( 35 )
+ H  AXUUL     AYLLU     XY( 36 )
+ H  AXLLU     AYLLU     XY( 37 )
+ H  AXULU     AYLLU     XY( 38 )
+ H  AXLUU     AYLLU     XY( 39 )
+ H  AXUUU     AYLLU     XY( 40 )
+ H  AXLLL     AYULU     XY( 41 )
+ H  AXULL     AYULU     XY( 42 )
+ H  AXLUL     AYULU     XY( 43 )
+ H  AXUUL     AYULU     XY( 44 )
+ H  AXLLU     AYULU     XY( 45 )
+ H  AXULU     AYULU     XY( 46 )
+ H  AXLUU     AYULU     XY( 47 )
+ H  AXUUU     AYULU     XY( 48 )
+ H  AXLLL     AYLUU     XY( 49 )
+ H  AXULL     AYLUU     XY( 50 )
+ H  AXLUL     AYLUU     XY( 51 )
+ H  AXUUL     AYLUU     XY( 52 )
+ H  AXLLU     AYLUU     XY( 53 )
+ H  AXULU     AYLUU     XY( 54 )
+ H  AXLUU     AYLUU     XY( 55 )
+ H  AXUUU     AYLUU     XY( 56 )
+ H  AXLLL     AYUUU     XY( 57 )
+ H  AXULL     AYUUU     XY( 58 )
+ H  AXLUL     AYUUU     XY( 59 )
+ H  AXUUL     AYUUU     XY( 60 )
+ H  AXLLU     AYUUU     XY( 61 )
+ H  AXULU     AYUUU     XY( 62 )
+ H  AXLUU     AYUUU     XY( 63 )
+ H  AXUUU     AYUUU     XY( 64 )
+
+ H  AYLLL     AYLLL     YY( 1 )
+ H  AYLLL     AYULL     YY( 9 )
+ H  AYULL     AYULL     YY( 10 )
+ H  AYLLL     AYLUL     YY( 17 )
+ H  AYULL     AYLUL     YY( 18 )
+ H  AYLUL     AYLUL     YY( 19 )
+ H  AYLLL     AYUUL     YY( 25 )
+ H  AYULL     AYUUL     YY( 26 )
+ H  AYLUL     AYUUL     YY( 27 )
+ H  AYUUL     AYUUL     YY( 28 )
+ H  AYLLL     AYLLU     YY( 33 )
+ H  AYULL     AYLLU     YY( 34 )
+ H  AYLUL     AYLLU     YY( 35 )
+ H  AYUUL     AYLLU     YY( 36 )
+ H  AYLLU     AYLLU     YY( 37 )
+ H  AYLLL     AYULU     YY( 41 )
+ H  AYULL     AYULU     YY( 42 )
+ H  AYLUL     AYULU     YY( 43 )
+ H  AYUUL     AYULU     YY( 44 )
+ H  AYLLU     AYULU     YY( 45 )
+ H  AYULU     AYULU     YY( 46 )
+ H  AYLLL     AYLUU     YY( 49 )
+ H  AYULL     AYLUU     YY( 50 )
+ H  AYLUL     AYLUU     YY( 51 )
+ H  AYUUL     AYLUU     YY( 52 )
+ H  AYLLU     AYLUU     YY( 53 )
+ H  AYULU     AYLUU     YY( 54 )
+ H  AYLUU     AYLUU     YY( 55 )
+ H  AYLLL     AYUUU     YY( 57 )
+ H  AYULL     AYUUU     YY( 58 )
+ H  AYLUL     AYUUU     YY( 59 )
+ H  AYUUL     AYUUU     YY( 60 )
+ H  AYLLU     AYUUU     YY( 61 )
+ H  AYULU     AYUUU     YY( 62 )
+ H  AYLUU     AYUUU     YY( 63 )
+ H  AYUUU     AYUUU     YY( 64 )
+
+ H  AXLLL     AZLLL     XZ( 1 )
+ H  AXULL     AZLLL     XZ( 2 )
+ H  AXLUL     AZLLL     XZ( 3 )
+ H  AXUUL     AZLLL     XZ( 4 )
+ H  AXLLU     AZLLL     XZ( 5 )
+ H  AXULU     AZLLL     XZ( 6 )
+ H  AXLUU     AZLLL     XZ( 7 )
+ H  AXUUU     AZLLL     XZ( 8 )
+ H  AXLLL     AZULL     XZ( 9 )
+ H  AXULL     AZULL     XZ( 10 )
+ H  AXLUL     AZULL     XZ( 11 )
+ H  AXUUL     AZULL     XZ( 12 )
+ H  AXLLU     AZULL     XZ( 13 )
+ H  AXULU     AZULL     XZ( 14 )
+ H  AXLUU     AZULL     XZ( 15 )
+ H  AXUUU     AZULL     XZ( 16 )
+ H  AXLLL     AZLUL     XZ( 17 )
+ H  AXULL     AZLUL     XZ( 18 )
+ H  AXLUL     AZLUL     XZ( 19 )
+ H  AXUUL     AZLUL     XZ( 20 )
+ H  AXLLU     AZLUL     XZ( 21 )
+ H  AXULU     AZLUL     XZ( 22 )
+ H  AXLUU     AZLUL     XZ( 23 )
+ H  AXUUU     AZLUL     XZ( 24 )
+ H  AXLLL     AZUUL     XZ( 25 )
+ H  AXULL     AZUUL     XZ( 26 )
+ H  AXLUL     AZUUL     XZ( 27 )
+ H  AXUUL     AZUUL     XZ( 28 )
+ H  AXLLU     AZUUL     XZ( 29 )
+ H  AXULU     AZUUL     XZ( 30 )
+ H  AXLUU     AZUUL     XZ( 31 )
+ H  AXUUU     AZUUL     XZ( 32 )
+ H  AXLLL     AZLLU     XZ( 33 )
+ H  AXULL     AZLLU     XZ( 34 )
+ H  AXLUL     AZLLU     XZ( 35 )
+ H  AXUUL     AZLLU     XZ( 36 )
+ H  AXLLU     AZLLU     XZ( 37 )
+ H  AXULU     AZLLU     XZ( 38 )
+ H  AXLUU     AZLLU     XZ( 39 )
+ H  AXUUU     AZLLU     XZ( 40 )
+ H  AXLLL     AZULU     XZ( 41 )
+ H  AXULL     AZULU     XZ( 42 )
+ H  AXLUL     AZULU     XZ( 43 )
+ H  AXUUL     AZULU     XZ( 44 )
+ H  AXLLU     AZULU     XZ( 45 )
+ H  AXULU     AZULU     XZ( 46 )
+ H  AXLUU     AZULU     XZ( 47 )
+ H  AXUUU     AZULU     XZ( 48 )
+ H  AXLLL     AZLUU     XZ( 49 )
+ H  AXULL     AZLUU     XZ( 50 )
+ H  AXLUL     AZLUU     XZ( 51 )
+ H  AXUUL     AZLUU     XZ( 52 )
+ H  AXLLU     AZLUU     XZ( 53 )
+ H  AXULU     AZLUU     XZ( 54 )
+ H  AXLUU     AZLUU     XZ( 55 )
+ H  AXUUU     AZLUU     XZ( 56 )
+ H  AXLLL     AZUUU     XZ( 57 )
+ H  AXULL     AZUUU     XZ( 58 )
+ H  AXLUL     AZUUU     XZ( 59 )
+ H  AXUUL     AZUUU     XZ( 60 )
+ H  AXLLU     AZUUU     XZ( 61 )
+ H  AXULU     AZUUU     XZ( 62 )
+ H  AXLUU     AZUUU     XZ( 63 )
+ H  AXUUU     AZUUU     XZ( 64 )
+
+ H  AYLLL     AZLLL     YZ( 1 )
+ H  AYULL     AZLLL     YZ( 2 )
+ H  AYLUL     AZLLL     YZ( 3 )
+ H  AYUUL     AZLLL     YZ( 4 )
+ H  AYLLU     AZLLL     YZ( 5 )
+ H  AYULU     AZLLL     YZ( 6 )
+ H  AYLUU     AZLLL     YZ( 7 )
+ H  AYUUU     AZLLL     YZ( 8 )
+ H  AYLLL     AZULL     YZ( 9 )
+ H  AYULL     AZULL     YZ( 10 )
+ H  AYLUL     AZULL     YZ( 11 )
+ H  AYUUL     AZULL     YZ( 12 )
+ H  AYLLU     AZULL     YZ( 13 )
+ H  AYULU     AZULL     YZ( 14 )
+ H  AYLUU     AZULL     YZ( 15 )
+ H  AYUUU     AZULL     YZ( 16 )
+ H  AYLLL     AZLUL     YZ( 17 )
+ H  AYULL     AZLUL     YZ( 18 )
+ H  AYLUL     AZLUL     YZ( 19 )
+ H  AYUUL     AZLUL     YZ( 20 )
+ H  AYLLU     AZLUL     YZ( 21 )
+ H  AYULU     AZLUL     YZ( 22 )
+ H  AYLUU     AZLUL     YZ( 23 )
+ H  AYUUU     AZLUL     YZ( 24 )
+ H  AYLLL     AZUUL     YZ( 25 )
+ H  AYULL     AZUUL     YZ( 26 )
+ H  AYLUL     AZUUL     YZ( 27 )
+ H  AYUUL     AZUUL     YZ( 28 )
+ H  AYLLU     AZUUL     YZ( 29 )
+ H  AYULU     AZUUL     YZ( 30 )
+ H  AYLUU     AZUUL     YZ( 31 )
+ H  AYUUU     AZUUL     YZ( 32 )
+ H  AYLLL     AZLLU     YZ( 33 )
+ H  AYULL     AZLLU     YZ( 34 )
+ H  AYLUL     AZLLU     YZ( 35 )
+ H  AYUUL     AZLLU     YZ( 36 )
+ H  AYLLU     AZLLU     YZ( 37 )
+ H  AYULU     AZLLU     YZ( 38 )
+ H  AYLUU     AZLLU     YZ( 39 )
+ H  AYUUU     AZLLU     YZ( 40 )
+ H  AYLLL     AZULU     YZ( 41 )
+ H  AYULL     AZULU     YZ( 42 )
+ H  AYLUL     AZULU     YZ( 43 )
+ H  AYUUL     AZULU     YZ( 44 )
+ H  AYLLU     AZULU     YZ( 45 )
+ H  AYULU     AZULU     YZ( 46 )
+ H  AYLUU     AZULU     YZ( 47 )
+ H  AYUUU     AZULU     YZ( 48 )
+ H  AYLLL     AZLUU     YZ( 49 )
+ H  AYULL     AZLUU     YZ( 50 )
+ H  AYLUL     AZLUU     YZ( 51 )
+ H  AYUUL     AZLUU     YZ( 52 )
+ H  AYLLU     AZLUU     YZ( 53 )
+ H  AYULU     AZLUU     YZ( 54 )
+ H  AYLUU     AZLUU     YZ( 55 )
+ H  AYUUU     AZLUU     YZ( 56 )
+ H  AYLLL     AZUUU     YZ( 57 )
+ H  AYULL     AZUUU     YZ( 58 )
+ H  AYLUL     AZUUU     YZ( 59 )
+ H  AYUUL     AZUUU     YZ( 60 )
+ H  AYLLU     AZUUU     YZ( 61 )
+ H  AYULU     AZUUU     YZ( 62 )
+ H  AYLUU     AZUUU     YZ( 63 )
+ H  AYUUU     AZUUU     YZ( 64 )
+
+ H  AZLLL     AZLLL     ZZ( 1 )
+ H  AZLLL     AZULL     ZZ( 9 )
+ H  AZULL     AZULL     ZZ( 10 )
+ H  AZLLL     AZLUL     ZZ( 17 )
+ H  AZULL     AZLUL     ZZ( 18 )
+ H  AZLUL     AZLUL     ZZ( 19 )
+ H  AZLLL     AZUUL     ZZ( 25 )
+ H  AZULL     AZUUL     ZZ( 26 )
+ H  AZLUL     AZUUL     ZZ( 27 )
+ H  AZUUL     AZUUL     ZZ( 28 )
+ H  AZLLL     AZLLU     ZZ( 33 )
+ H  AZULL     AZLLU     ZZ( 34 )
+ H  AZLUL     AZLLU     ZZ( 35 )
+ H  AZUUL     AZLLU     ZZ( 36 )
+ H  AZLLU     AZLLU     ZZ( 37 )
+ H  AZLLL     AZULU     ZZ( 41 )
+ H  AZULL     AZULU     ZZ( 42 )
+ H  AZLUL     AZULU     ZZ( 43 )
+ H  AZUUL     AZULU     ZZ( 44 )
+ H  AZLLU     AZULU     ZZ( 45 )
+ H  AZULU     AZULU     ZZ( 46 )
+ H  AZLLL     AZLUU     ZZ( 49 )
+ H  AZULL     AZLUU     ZZ( 50 )
+ H  AZLUL     AZLUU     ZZ( 51 )
+ H  AZUUL     AZLUU     ZZ( 52 )
+ H  AZLLU     AZLUU     ZZ( 53 )
+ H  AZULU     AZLUU     ZZ( 54 )
+ H  AZLUU     AZLUU     ZZ( 55 )
+ H  AZLLL     AZUUU     ZZ( 57 )
+ H  AZULL     AZUUU     ZZ( 58 )
+ H  AZLUL     AZUUU     ZZ( 59 )
+ H  AZUUL     AZUUU     ZZ( 60 )
+ H  AZLLU     AZUUU     ZZ( 61 )
+ H  AZULU     AZUUU     ZZ( 62 )
+ H  AZLUU     AZUUU     ZZ( 63 )
+ H  AZUUU     AZUUU     ZZ( 64 )
+
+ENDATA
+
+      INTEGER FUNCTION IEINT( I, J, K, EPS, DELTA, RI, RJ, RK,
+     *                        DELX, DELY, DELZ, DX, DY, DZ,
+     *                        AXLLL, AXLLU, AXLUL, AXLUU,
+     *                        AXULL, AXULU, AXUUL, AXUUU,
+     *                        AYLLL, AYLLU, AYLUL, AYLUU,
+     *                        AYULL, AYULU, AYUUL, AYUUU,
+     *                        AZLLL, AZLLU, AZLUL, AZLUU,
+     *                        AZULL, AZULU, AZUUL, AZUUU,
+     *                        INTF, INTGX, INTGY, INTGZ,
+     *                        INTHXX, INTHXY, INTHXZ,
+     *                        INTHYY, INTHYZ, INTHZZ )
+      INTEGER          I, J, K
+      DOUBLE PRECISION EPS, DELTA, RI, RJ, RK,
+     *                 DELX, DELY, DELZ, DX, DY, DZ,
+     *                 AXLLL, AXLLU, AXLUL, AXLUU,
+     *                 AXULL, AXULU, AXUUL, AXUUU,
+     *                 AYLLL, AYLLU, AYLUL, AYLUU,
+     *                 AYULL, AYULU, AYUUL, AYUUU,
+     *                 AZLLL, AZLLU, AZLUL, AZLUU,
+     *                 AZULL, AZULU, AZUUL, AZUUU,
+     *                 INTF, INTGX( 8 ), INTGY( 8 ), INTGZ( 8 ),
+     *                 INTHXX( 64 ), INTHXY( 64 ), INTHXZ( 64 ),
+     *                 INTHYY( 64 ), INTHYZ( 64 ), INTHZZ( 64 )
+      INTEGER          M, N, MM1, NM1, NTOT
+C
+C  The values of M and N must agree with those set in the SDIF file.
+C
+C     PARAMETER      ( M = 2, N = 2 )
+      PARAMETER      ( M = 6, N = 12 )
+      PARAMETER      ( MM1 = M - 1, NM1 = N - 1 )
+      PARAMETER      ( NTOT = 8 * N * N * M )
+      DOUBLE PRECISION G( 24, 8, 0: NM1, 0: NM1, 0: MM1 )
+C     LOGICAL          EV( 8, 0: NM1, 0: NM1, 0: MM1 )
+      INTEGER          I1, J1, K1, I2, J2, K2, L1, LL, L2, L3
+      DOUBLE PRECISION XL, XU, YL, YU, ZL, ZU, XMID, YMID, ZMID,
+     *                 ONE, HALF, SXL, SXU, SYL, SYU, SZL, SZU,
+     *                 SUMX, SUMY, SUMZ, ZERO, X, Y, Z,
+     *                 SUMXX, SUMXY, SUMXZ, SUMYY, SUMYZ, SUMZZ
+      DOUBLE PRECISION P( 8 )
+      DOUBLE PRECISION DPX( 2, 2, 2, 8 )
+      DOUBLE PRECISION DPY( 2, 2, 2, 8 )
+      DOUBLE PRECISION DPZ( 2, 2, 2, 8 )
+      DOUBLE PRECISION DPXX( 2, 2, 2, 2, 2, 2, 8 )
+      DOUBLE PRECISION DPXY( 2, 2, 2, 2, 2, 2, 8 )
+      DOUBLE PRECISION DPXZ( 2, 2, 2, 2, 2, 2, 8 )
+      DOUBLE PRECISION DPYX( 2, 2, 2, 2, 2, 2, 8 )
+      DOUBLE PRECISION DPYY( 2, 2, 2, 2, 2, 2, 8 )
+      DOUBLE PRECISION DPYZ( 2, 2, 2, 2, 2, 2, 8 )
+      DOUBLE PRECISION DPZX( 2, 2, 2, 2, 2, 2, 8 )
+      DOUBLE PRECISION DPZY( 2, 2, 2, 2, 2, 2, 8 )
+      DOUBLE PRECISION DPZZ( 2, 2, 2, 2, 2, 2, 8 )
+      PARAMETER      ( ZERO = 0.0D+0, ONE  = 1.0D+0, HALF = 5.0D-1 )
+      INTEGER          IPHI
+      EXTERNAL         IPHI
+C     DATA             EV / NTOT * .TRUE. /
+C     SAVE
+C
+C  Calculate the vertices of the 3-D rectangular box element.
+C
+      XL   = - ONE + DX * DBLE( I )
+      YL   = - ONE + DY * DBLE( J )
+      ZL   =         DZ * DBLE( K )
+      XU   = XL    + DX
+      YU   = YL    + DY
+      ZU   = ZL    + DZ
+      XMID = HALF * ( XL + XU )
+      YMID = HALF * ( YL + YU )
+      ZMID = HALF * ( ZL + ZU )
+      SXL  = XL / DX
+      SYL  = YL / DY
+      SZL  = ZL / DZ
+      SXU  = - XU / DX
+      SYU  = - YU / DY
+      SZU  = - ZU / DZ
+C
+C  Calculate the 8 contributions to the Gaussian Quadrature formula.
+C
+      L1 = 0
+      DO 180 K1 = 1, 2
+       IF ( K1 .EQ. 1 ) THEN
+          Z = ZMID - DELZ
+       ELSE
+          Z = ZMID + DELZ
+       END IF
+       DO 170 J1 = 1, 2
+        IF ( K1 .EQ. 1 ) THEN
+           Y = YMID - DELY
+        ELSE
+           Y = YMID + DELY
+        END IF
+        DO 160 I1 = 1, 2
+         IF ( K1 .EQ. 1 ) THEN
+            X = XMID - DELX
+         ELSE
+            X = XMID + DELX
+         END IF
+         L1    = L1 + 1
+         IEINT = IPHI( X, Y, Z, EPS, DELTA, XL, XU, YL, YU, ZL, ZU,
+     *                 DX, DY, DZ, SXL, SXU, SYL, SYU, SZL, SZU,
+     *                 AXLLL, AXLLU, AXLUL, AXLUU,
+     *                 AXULL, AXULU, AXUUL, AXUUU,
+     *                 AYLLL, AYLLU, AYLUL, AYLUU,
+     *                 AYULL, AYULU, AYUUL, AYUUU,
+     *                 AZLLL, AZLLU, AZLUL, AZLUU,
+     *                 AZULL, AZULU, AZUUL, AZUUU,
+     *                 G( 1, L1, I, J, K ), 
+C    *                 EV( L1, I, J, K ),
+     *                 P( L1 ), DPX( 1, 1, 1, L1 ),
+     *                 DPY( 1, 1, 1, L1 ), DPZ( 1, 1, 1, L1 ),
+     *                 DPXX( 1, 1, 1, 1, 1, 1, L1 ),
+     *                 DPXY( 1, 1, 1, 1, 1, 1, L1 ),
+     *                 DPXZ( 1, 1, 1, 1, 1, 1, L1 ),
+     *                 DPYY( 1, 1, 1, 1, 1, 1, L1 ),
+     *                 DPYZ( 1, 1, 1, 1, 1, 1, L1 ),
+     *                 DPZZ( 1, 1, 1, 1, 1, 1, L1 ) )
+  160   CONTINUE
+  170  CONTINUE
+  180 CONTINUE
+C
+C  Calculate the function and gradient values from the Gauss formula.
+C
+      L1    = 0
+      L2    = 0
+      INTF = ZERO
+      DO 280 K1 = 1, 2
+       DO 270 J1 = 1, 2
+        DO 260 I1 = 1, 2
+         L1       = L1 + 1
+         SUMX     = ZERO
+         SUMY     = ZERO
+         SUMZ     = ZERO
+         DO 210 LL = 1, 8
+           SUMX   = SUMX + DPX( I1, J1, K1, LL )
+           SUMY   = SUMY + DPY( I1, J1, K1, LL )
+           SUMZ   = SUMZ + DPZ( I1, J1, K1, LL )
+  210    CONTINUE
+         INTF        = INTF + P( L1 )
+         INTGX( L1 ) = SUMX
+         INTGY( L1 ) = SUMY
+         INTGZ( L1 ) = SUMZ
+         L3 = 0
+         DO 250 K2 = 1, 2
+          DO 240 J2 = 1, 2
+           DO 230 I2 = 1, 2
+            L2       = L2 + 1
+            L3       = L3 + 1
+            SUMXY    = ZERO
+            SUMXZ    = ZERO
+            SUMYZ    = ZERO
+            DO 220 LL = 1, 8
+              SUMXY   = SUMXY + DPXY( I2, J2, K2, I1, J1, K1, LL )
+              SUMXZ   = SUMXZ + DPXZ( I2, J2, K2, I1, J1, K1, LL )
+              SUMYZ   = SUMYZ + DPYZ( I2, J2, K2, I1, J1, K1, LL )
+  220       CONTINUE
+            INTHXY( L2 ) = SUMXY
+            INTHXZ( L2 ) = SUMXZ
+            INTHYZ( L2 ) = SUMYZ
+            IF ( L3 .LE. L1 ) THEN
+               SUMXX    = ZERO
+               SUMYY    = ZERO
+               SUMZZ    = ZERO
+               DO 225 LL = 1, 8
+                 SUMXX   = SUMXX + DPXX( I2, J2, K2, I1, J1, K1, LL )
+                 SUMYY   = SUMYY + DPYY( I2, J2, K2, I1, J1, K1, LL )
+                 SUMZZ   = SUMZZ + DPZZ( I2, J2, K2, I1, J1, K1, LL )
+  225          CONTINUE
+               INTHXX( L2 ) = SUMXX
+               INTHYY( L2 ) = SUMYY
+               INTHZZ( L2 ) = SUMZZ
+            END IF
+  230      CONTINUE
+  240     CONTINUE
+  250    CONTINUE
+  260   CONTINUE
+  270  CONTINUE
+  280 CONTINUE
+      RETURN
+      END
+      INTEGER FUNCTION IPHI( X, Y, Z, EPS, DELTA,
+     *                       XL, XU, YL, YU, ZL, ZU,
+     *                       DX, DY, DZ, SXL, SXU, SYL, SYU, SZL, SZU,
+     *                       AXLLL, AXLLU, AXLUL, AXLUU,
+     *                       AXULL, AXULU, AXUUL, AXUUU,
+     *                       AYLLL, AYLLU, AYLUL, AYLUU,
+     *                       AYULL, AYULU, AYUUL, AYUUU,
+     *                       AZLLL, AZLLU, AZLUL, AZLUU,
+     *                       AZULL, AZULU, AZUUL, AZUUU,
+     *                       G, 
+C    *                       EV, 
+     *                       P, DPX, DPY, DPZ,
+     *                       DPXX, DPXY, DPXZ, DPYY, DPYZ, DPZZ )
+      DOUBLE PRECISION X, Y, Z, EPS, DELTA,
+     *                 DX, DY, DZ, SXL, SXU, SYL, SYU, SZL, SZU,
+     *                 AXLLL, AXLLU, AXLUL, AXLUU,
+     *                 AXULL, AXULU, AXUUL, AXUUU,
+     *                 AYLLL, AYLLU, AYLUL, AYLUU,
+     *                 AYULL, AYULU, AYUUL, AYUUU,
+     *                 AZLLL, AZLLU, AZLUL, AZLUU,
+     *                 AZULL, AZULU, AZUUL, AZUUU, P
+      DOUBLE PRECISION G( 2, 2, 2, 3 ), DPX( 2, 2, 2 )
+      DOUBLE PRECISION DPY( 2, 2, 2 ) , DPZ( 2, 2, 2 )
+      DOUBLE PRECISION DPXX( 2, 2, 2, 2, 2, 2 )
+      DOUBLE PRECISION DPXY( 2, 2, 2, 2, 2, 2 )
+      DOUBLE PRECISION DPXZ( 2, 2, 2, 2, 2, 2 )
+      DOUBLE PRECISION DPYY( 2, 2, 2, 2, 2, 2 )
+      DOUBLE PRECISION DPYZ( 2, 2, 2, 2, 2, 2 )
+      DOUBLE PRECISION DPZZ( 2, 2, 2, 2, 2, 2 )
+C     LOGICAL          EV
+C
+C  Calculate the pointwise energy of an isotropic nonlinear elastic
+C  material within a 3-D rectangular finite element.
+C
+      DOUBLE PRECISION FXX, FXY, FYY, FXZ, FYZ, FZZ
+      DOUBLE PRECISION FLLL, FLLU, FLUL, FLUU, FULL, FULU, FUUL, FUUU
+      DOUBLE PRECISION DU( 3, 3 )
+C     DOUBLE PRECISION DFXX( 2, 2, 2, 3 ), DFXY( 2, 2, 2, 3 )
+C     DOUBLE PRECISION DFYY( 2, 2, 2, 3 ), DFXZ( 2, 2, 2, 3 )
+C     DOUBLE PRECISION DFYZ( 2, 2, 2, 3 ), DFZZ( 2, 2, 2, 3 )
+      DOUBLE PRECISION DIX( 2, 2, 2, 3 )
+      DOUBLE PRECISION DIY( 2, 2, 2, 3 )
+      DOUBLE PRECISION DIZ( 2, 2, 2, 3 )
+      DOUBLE PRECISION DIXX( 2, 2, 2, 2, 2, 2, 3 )
+      DOUBLE PRECISION DIXY( 2, 2, 2, 2, 2, 2, 3 )
+      DOUBLE PRECISION DIXZ( 2, 2, 2, 2, 2, 2, 3 )
+      DOUBLE PRECISION DIYY( 2, 2, 2, 2, 2, 2, 3 )
+      DOUBLE PRECISION DIYZ( 2, 2, 2, 2, 2, 2, 3 )
+      DOUBLE PRECISION DIZZ( 2, 2, 2, 2, 2, 2, 3 )
+      DOUBLE PRECISION XL, XU, YL, YU, ZL, ZU, V, V2, BV2, CV2
+      DOUBLE PRECISION GTGAX( 2, 2, 2 ), GTGAY( 2, 2, 2 )
+      DOUBLE PRECISION GTGAZ( 2, 2, 2 ), INV1 , INV2 , INV3, DGTG
+      DOUBLE PRECISION GTGAX1, GTGAY1, GTGAZ1, GTGAX2, GTGAY2, GTGAZ2
+      DOUBLE PRECISION CV21, CV22, CV22X, CV22Y, CV22Z
+      DOUBLE PRECISION FXXYY, FXXZZ, FYYZZ, FXYYZ, FXZYZ, FXYXZ
+      DOUBLE PRECISION FXXPYY, FXXPZZ, FYYPZZ
+      DOUBLE PRECISION FGXXY, FGXXZ, FGXYX, FGXYY, FGXYZ, FGXZX, FGXZY,
+     *                 FGXZZ, FGYYX, FGYYZ, FGYZX, FGYZY, FGYZZ,
+     *                 FGZZX, FGZZY, HGTGAX, HGTGAY, HGTGAZ
+      INTEGER          I, J, K, IX, IY, IZ, UX, UY, UZ
+      INTEGER          I1, J1, K1, L1, I2, J2, K2, L2
+      PARAMETER      ( IX = 1, IY = 2, IZ = 3, UX = 1, UY = 2, UZ = 3 )
+      DOUBLE PRECISION ZERO, TWO, HALF
+      PARAMETER      ( ZERO = 0.0D+0, TWO = 2.0D+0, HALF = 5.0D-1 )
+      INTRINSIC        DBLE, LOG
+      DOUBLE PRECISION PSI
+      EXTERNAL         PSI
+      DOUBLE PRECISION MDX, MDY, MDZ
+      MDX = - DX
+      MDY = - DY
+      MDZ = - DZ
+C
+C  The function u is represented as the sum of eight trilinear
+C  shape functions, one for each vertex of the 3-D rectangular box.
+C
+C     IF ( EV ) THEN
+C
+C  Evalutate the shape function at vertex LLL
+C
+         FLLL = PSI( X, Y, Z, XL, YL, ZL, XU, YU, ZU, DX, DY, DZ,
+     *               SXL, SYL, SZL,    G( 1, 1, 1, IX ),
+     *               G( 1, 1, 1, IY ), G( 1, 1, 1, IZ ) )
+C
+C  Evalutate the shape function at vertex LLU
+C
+         FLLU = PSI( X, Y, Z, XL, YL, ZU, XU, YU, ZL, DX, DY, MDZ,
+     *               SXL, SYL, SZU,    G( 1, 1, 2, IX ),
+     *               G( 1, 1, 2, IY ), G( 1, 1, 2, IZ ) )
+C
+C  Evalutate the shape function at vertex LUL
+C
+         FLUL = PSI( X, Y, Z, XL, YU, ZL, XU, YL, ZU, DX, MDY, DZ,
+     *               SXL, SYU, SZL,    G( 1, 2, 1, IX ),
+     *               G( 1, 2, 1, IY ), G( 1, 2, 1, IZ ) )
+C
+C  Evalutate the shape function at vertex LUU
+C
+         FLUU = PSI( X, Y, Z, XL, YU, ZU, XU, YL, ZL, DX, MDY, MDZ,
+     *               SXL, SYU, SZU,    G( 1, 2, 2, IX ),
+     *               G( 1, 2, 2, IY ), G( 1, 2, 2, IZ ) )
+C
+C  Evalutate the shape function at vertex ULL
+C
+         FULL = PSI( X, Y, Z, XU, YL, ZL, XL, YU, ZU, MDX, DY, DZ,
+     *               SXU, SYL, SZL,    G( 2, 1, 1, IX ),
+     *               G( 2, 1, 1, IY ), G( 2, 1, 1, IZ ) )
+C
+C  Evalutate the shape function at vertex ULU
+C
+         FULU = PSI( X, Y, Z, XU, YL, ZU, XL, YU, ZL, MDX, DY, MDZ,
+     *               SXU, SYL, SZU,    G( 2, 1, 2, IX ),
+     *               G( 2, 1, 2, IY ), G( 2, 1, 2, IZ ) )
+C
+C  Evalutate the shape function at vertex UUL
+C
+         FUUL = PSI( X, Y, Z, XU, YU, ZL, XL, YL, ZU, MDX, MDY, DZ,
+     *               SXU, SYU, SZL,    G( 2, 2, 1, IX ),
+     *               G( 2, 2, 1, IY ), G( 2, 2, 1, IZ ) )
+C
+C  Evalutate the shape function at vertex UUU
+C
+         FUUU = PSI( X, Y, Z, XU, YU, ZU, XL, YL, ZL, MDX, MDY, MDZ,
+     *               SXU, SYU, SZU,    G( 2, 2, 2, IX ),
+     *               G( 2, 2, 2, IY ), G( 2, 2, 2, IZ ) )
+C
+C  Calculate the inner product of all the components.
+C
+C        EV = .FALSE.
+C      END IF
+C
+C  Calculate the components of the matrix grad u.
+C
+      DO 10 I = 1, 3
+       DU( UX, I ) = AXLLL * G( 1, 1, 1, I ) + AXLLU * G( 1, 1, 2, I )
+     *             + AXLUL * G( 1, 2, 1, I ) + AXLUU * G( 1, 2, 2, I )
+     *             + AXULL * G( 2, 1, 1, I ) + AXULU * G( 2, 1, 2, I )
+     *             + AXUUL * G( 2, 2, 1, I ) + AXUUU * G( 2, 2, 2, I )
+       DU( UY, I ) = AYLLL * G( 1, 1, 1, I ) + AYLLU * G( 1, 1, 2, I )
+     *             + AYLUL * G( 1, 2, 1, I ) + AYLUU * G( 1, 2, 2, I )
+     *             + AYULL * G( 2, 1, 1, I ) + AYULU * G( 2, 1, 2, I )
+     *             + AYUUL * G( 2, 2, 1, I ) + AYUUU * G( 2, 2, 2, I )
+       DU( UZ, I ) = AZLLL * G( 1, 1, 1, I ) + AZLLU * G( 1, 1, 2, I )
+     *             + AZLUL * G( 1, 2, 1, I ) + AZLUU * G( 1, 2, 2, I )
+     *             + AZULL * G( 2, 1, 1, I ) + AZULU * G( 2, 1, 2, I )
+     *             + AZUUL * G( 2, 2, 1, I ) + AZUUU * G( 2, 2, 2, I )
+   10 CONTINUE
+C                                                       T
+C  Calculate the components of F = ( grad u ) ( grad u ) .
+C
+      FXX = DU( UX, IX ) * DU( UX, IX ) + DU( UX, IY ) * DU( UX, IY ) +
+     *      DU( UX, IZ ) * DU( UX, IZ )
+      FXY = DU( UX, IX ) * DU( UY, IX ) + DU( UX, IY ) * DU( UY, IY ) +
+     *      DU( UX, IZ ) * DU( UY, IZ )
+      FYY = DU( UY, IX ) * DU( UY, IX ) + DU( UY, IY ) * DU( UY, IY ) +
+     *      DU( UY, IZ ) * DU( UY, IZ )
+      FXZ = DU( UX, IX ) * DU( UZ, IX ) + DU( UX, IY ) * DU( UZ, IY ) +
+     *      DU( UX, IZ ) * DU( UZ, IZ )
+      FYZ = DU( UY, IX ) * DU( UZ, IX ) + DU( UY, IY ) * DU( UZ, IY ) +
+     *      DU( UY, IZ ) * DU( UZ, IZ )
+      FZZ = DU( UZ, IX ) * DU( UZ, IX ) + DU( UZ, IY ) * DU( UZ, IY ) +
+     *      DU( UZ, IZ ) * DU( UZ, IZ )
+C                                                             T
+C  Calculate the principal invariants of ( grad u ) ( grad u ) .
+C
+      FYYPZZ = FYY + FZZ
+      FXXPYY = FXX + FYY
+      FXXPZZ = FXX + FZZ
+      FXXYY  = FXX * FYY - FXY * FXY
+      FXXZZ  = FXX * FZZ - FXZ * FXZ
+      FYYZZ  = FYY * FZZ - FYZ * FYZ
+      FXYYZ  = FXY * FYZ - FYY * FXZ
+      FXZYZ  = FXZ * FYZ - FZZ * FXY
+      FXYXZ  = FXY * FXZ - FXX * FYZ
+      INV1   = FXXPYY + FZZ
+      INV2   = FXXYY + FYYZZ + FXXZZ
+      INV3   = FZZ * FXXYY + FXZ * FXYYZ + FYZ * FXYXZ
+C
+C  Calculate derivatives of F for later use.
+C
+      DO 80 K = 1, 2
+       DO 70 J = 1, 2
+        DO 60 I = 1, 2
+         GTGAX( I, J, K ) = TWO * ( DU( UX, IX ) * G( I, J, K, IX ) +
+     *                              DU( UX, IY ) * G( I, J, K, IY ) +
+     *                              DU( UX, IZ ) * G( I, J, K, IZ ) )
+         GTGAY( I, J, K ) = TWO * ( DU( UY, IX ) * G( I, J, K, IX ) +
+     *                              DU( UY, IY ) * G( I, J, K, IY ) +
+     *                              DU( UY, IZ ) * G( I, J, K, IZ ) )
+         GTGAZ( I, J, K ) = TWO * ( DU( UZ, IX ) * G( I, J, K, IX ) +
+     *                              DU( UZ, IY ) * G( I, J, K, IY ) +
+     *                              DU( UZ, IZ ) * G( I, J, K, IZ ) )
+   60   CONTINUE
+   70  CONTINUE
+   80 CONTINUE
+C
+C  Calculate the first derivatives of INVi with respect to the
+C  variables x( x, x, x ).
+C
+      L1 = 0
+      DO 180 K1 = 1, 2
+       DO 170 J1 = 1, 2
+        DO 160 I1 = 1, 2
+         L1       = L1 + 1
+         GTGAX1   = GTGAX( I1, J1, K1 )
+         GTGAY1   = GTGAY( I1, J1, K1 )
+         GTGAZ1   = GTGAZ( I1, J1, K1 )
+         HGTGAX   = HALF * GTGAX1
+         HGTGAY   = HALF * GTGAY1
+         HGTGAZ   = HALF * GTGAZ1
+         DIX( I1, J1, K1, 1 ) =   GTGAX1
+         DIY( I1, J1, K1, 1 ) =   GTGAY1
+         DIZ( I1, J1, K1, 1 ) =   GTGAZ1
+         DIX( I1, J1, K1, 2 ) =   GTGAX1 * FYYPZZ
+     *                          - GTGAY1 * FXY   - GTGAZ1 * FXZ
+         DIY( I1, J1, K1, 2 ) =   GTGAY1 * FXXPZZ
+     *                          - GTGAX1 * FXY   - GTGAZ1 * FYZ
+         DIZ( I1, J1, K1, 2 ) =   GTGAZ1 * FXXPYY
+     *                          - GTGAX1 * FXZ   - GTGAY1 * FYZ
+         DIX( I1, J1, K1, 3 ) =   GTGAX1 * FYYZZ + GTGAY1 * FXZYZ
+     *                          + GTGAZ1 * FXYYZ
+         DIY( I1, J1, K1, 3 ) =   GTGAY1 * FXXZZ + GTGAX1 * FXZYZ
+     *                          + GTGAZ1 * FXYXZ
+         DIZ( I1, J1, K1, 3 ) =   GTGAZ1 * FXXYY + GTGAX1 * FXYYZ
+     *                          + GTGAY1 * FXYXZ
+C
+C  Calculate the second derivatives of INVi with respect to the
+C  variables x( x, x, x ) and x( x, x, x ).
+C
+         L2 = 0
+         DO 140 K2 = 1, 2
+          DO 130 J2 = 1, 2
+           DO 120 I2 = 1, 2
+            L2       = L2 + 1
+            DGTG = TWO * (
+     *               G( I1, J1, K1, IX ) * G( I2, J2, K2, IX ) +
+     *               G( I1, J1, K1, IY ) * G( I2, J2, K2, IY ) +
+     *               G( I1, J1, K1, IZ ) * G( I2, J2, K2, IZ ) )
+            GTGAX2 = GTGAX( I2, J2, K2 )
+            GTGAY2 = GTGAY( I2, J2, K2 )
+            GTGAZ2 = GTGAZ( I2, J2, K2 )
+            FGXXY  = FXX * GTGAY2
+            FGXXZ  = FXX * GTGAZ2
+            FGXYX  = FXY * GTGAX2
+            FGXYY  = FXY * GTGAY2
+            FGXYZ  = FXY * GTGAZ2
+            FGXZX  = FXZ * GTGAX2
+            FGXZY  = FXZ * GTGAY2
+            FGXZZ  = FXZ * GTGAZ2
+            FGYYX  = FYY * GTGAX2
+            FGYYZ  = FYY * GTGAZ2
+            FGYZX  = FYZ * GTGAX2
+            FGYZY  = FYZ * GTGAY2
+            FGYZZ  = FYZ * GTGAZ2
+            FGZZX  = FZZ * GTGAX2
+            FGZZY  = FZZ * GTGAY2
+            DIXY( I1, J1, K1, I2, J2, K2, 2 ) = GTGAX1 * GTGAY2
+     *                           - HGTGAY * GTGAX2 - DGTG * FXY
+            DIXZ( I1, J1, K1, I2, J2, K2, 2 ) = GTGAX1 * GTGAZ2
+     *                           - DGTG * FXZ - HGTGAZ * GTGAX2
+            DIYZ( I1, J1, K1, I2, J2, K2, 2 ) = GTGAY1 * GTGAZ2
+     *                           - HGTGAZ * GTGAY2 - DGTG * FYZ
+            DIXY( I1, J1, K1, I2, J2, K2, 3 ) = DGTG * FXZYZ
+     *                           + GTGAX1 * ( FGZZY - FGYZZ )
+     *                           + HGTGAY * ( FGXZZ - FGZZX )
+     *                           + HGTGAZ * ( FGYZX + FGXYZ )
+     *                           - GTGAZ1 *   FGXZY
+            DIXZ( I1, J1, K1, I2, J2, K2, 3 ) = DGTG * FXYYZ
+     *                           + GTGAX1 * ( FGYYZ - FGYZY )
+     *                           + HGTGAY * ( FGYZX + FGXZY )
+     *                           + HGTGAZ * ( FGXYY - FGYYX )
+     *                           - GTGAY1 *   FGXYZ
+            DIYZ( I1, J1, K1, I2, J2, K2, 3 ) = DGTG * FXYXZ
+     *                           + HGTGAX * ( FGXZY + FGYZX )
+     *                           + GTGAY1 * ( FGXXZ - FGXZX )
+     *                           + HGTGAZ * ( FGXYX - FGXXY )
+     *                           - GTGAX1 * FGXYZ
+            IF ( L2 .GE. L1 ) THEN
+               DIXX( I1, J1, K1, I2, J2, K2, 1 ) = DGTG
+               DIYY( I1, J1, K1, I2, J2, K2, 1 ) = DGTG
+               DIZZ( I1, J1, K1, I2, J2, K2, 1 ) = DGTG
+               DIXX( I1, J1, K1, I2, J2, K2, 2 ) = DGTG * FYYPZZ
+     *                       - HGTGAY * GTGAY2 - HGTGAZ * GTGAZ2
+               DIYY( I1, J1, K1, I2, J2, K2, 2 ) = DGTG * FXXPZZ
+     *                       - HGTGAX * GTGAX2 - HGTGAZ * GTGAZ2
+               DIZZ( I1, J1, K1, I2, J2, K2, 2 ) = DGTG * FXXPYY
+     *                       - HGTGAX * GTGAX2 - HGTGAY * GTGAY2
+               DIXX( I1, J1, K1, I2, J2, K2, 3 ) = DGTG * FYYZZ
+     *                              + HGTGAY * ( FGYZZ - FGZZY )
+     *                              + HGTGAZ * ( FGYZY - FGYYZ )
+               DIYY( I1, J1, K1, I2, J2, K2, 3 ) = DGTG * FXXZZ
+     *                              + HGTGAX * ( FGXZZ - FGZZX )
+     *                              + HGTGAZ * ( FGXZX - FGXXZ )
+               DIZZ( I1, J1, K1, I2, J2, K2, 3 ) =  DGTG * FXXYY
+     *                              + HGTGAX * ( FGXYY - FGYYX )
+     *                              + HGTGAY * ( FGXYX - FGXXY )
+            END IF
+  120      CONTINUE
+  130     CONTINUE
+  140    CONTINUE
+C
+C  End of loop to calculate second derivatives.
+C
+  160   CONTINUE
+  170  CONTINUE
+  180 CONTINUE
+C
+C  Calculate the pointwise energy, P.
+C
+      V    = 1.0D+0 - EPS * Z / DELTA
+      V2   = V * V
+      BV2  = 4.5D-1 / V2
+      CV2  = 3.1D+0 * V2
+      CV21 = CV2 / INV3
+      CV22 = CV2 / INV3 ** 2
+      P    = 6.5D-1 * INV1 +  BV2 * INV2
+     *       -  CV2 * ( LOG( INV3 ) - 3.0D+0 * LOG( V2 ) )
+C
+C  Calculate the first derivatives of P with respect to the
+C  variables x( x, x, x ).
+C
+      L1 = 0
+      DO 380 K1 = 1, 2
+       DO 370 J1 = 1, 2
+        DO 360 I1 = 1, 2
+         L1       = L1 + 1
+         DPX( I1, J1, K1 ) = 6.5D-1 * DIX( I1, J1, K1, 1 )
+     *                     + BV2    * DIX( I1, J1, K1, 2 )
+     *                     - CV21   * DIX( I1, J1, K1, 3 )
+         DPY( I1, J1, K1 ) = 6.5D-1 * DIY( I1, J1, K1, 1 )
+     *                     + BV2    * DIY( I1, J1, K1, 2 )
+     *                     - CV21   * DIY( I1, J1, K1, 3 )
+         DPZ( I1, J1, K1 ) = 6.5D-1 * DIZ( I1, J1, K1, 1 )
+     *                     + BV2    * DIZ( I1, J1, K1, 2 )
+     *                     - CV21   * DIZ( I1, J1, K1, 3 )
+C
+C  Calculate the second derivatives of P with respect to the
+C  variables x( x, x, x ) and x( x, x, x ).
+C
+         CV22X = CV22 * DIX( I1, J1, K1, 3 )
+         CV22Y = CV22 * DIY( I1, J1, K1, 3 )
+         CV22Z = CV22 * DIZ( I1, J1, K1, 3 )
+         L2    = 0
+         DO 330 K2 = 1, 2
+          DO 320 J2 = 1, 2
+           DO 310 I2 = 1, 2
+            L2       = L2 + 1
+            DPXY( I1, J1, K1, I2, J2, K2 ) =
+     *           BV2    * DIXY( I1, J1, K1, I2, J2, K2, 2 )
+     *         - CV21   * DIXY( I1, J1, K1, I2, J2, K2, 3 )
+     *         + CV22X  * DIY( I2, J2, K2, 3 )
+            DPXZ( I1, J1, K1, I2, J2, K2 ) =
+     *           BV2    * DIXZ( I1, J1, K1, I2, J2, K2, 2 )
+     *         - CV21   * DIXZ( I1, J1, K1, I2, J2, K2, 3 )
+     *         + CV22X  * DIZ( I2, J2, K2, 3 )
+            DPYZ( I1, J1, K1, I2, J2, K2 ) =
+     *           BV2    * DIYZ( I1, J1, K1, I2, J2, K2, 2 )
+     *         - CV21   * DIYZ( I1, J1, K1, I2, J2, K2, 3 )
+     *         + CV22Y  * DIZ( I2, J2, K2, 3 )
+            IF ( L2 .GE. L1 ) THEN
+               DPXX( I1, J1, K1, I2, J2, K2 ) =
+     *              6.5D-1 * DIXX( I1, J1, K1, I2, J2, K2, 1 )
+     *            + BV2    * DIXX( I1, J1, K1, I2, J2, K2, 2 )
+     *            - CV21   * DIXX( I1, J1, K1, I2, J2, K2, 3 )
+     *            + CV22X  * DIX( I2, J2, K2, 3 )
+               DPYY( I1, J1, K1, I2, J2, K2 ) =
+     *              6.5D-1 * DIYY( I1, J1, K1, I2, J2, K2, 1 )
+     *            + BV2    * DIYY( I1, J1, K1, I2, J2, K2, 2 )
+     *            - CV21   * DIYY( I1, J1, K1, I2, J2, K2, 3 )
+     *            + CV22Y  * DIY( I2, J2, K2, 3 )
+               DPZZ( I1, J1, K1, I2, J2, K2 ) =
+     *              6.5D-1 * DIZZ( I1, J1, K1, I2, J2, K2, 1 )
+     *            + BV2    * DIZZ( I1, J1, K1, I2, J2, K2, 2 )
+     *            - CV21   * DIZZ( I1, J1, K1, I2, J2, K2, 3 )
+     *            + CV22Z  * DIZ( I2, J2, K2, 3 )
+            END IF
+  310      CONTINUE
+  320     CONTINUE
+  330    CONTINUE
+  360   CONTINUE
+  370  CONTINUE
+  380 CONTINUE
+C
+C  Prepare to return.
+C
+      IPHI = 1
+      RETURN
+      END
+      DOUBLE PRECISION FUNCTION PSI( X, Y, Z, XL, YL, ZL, XU, YU, ZU,
+     *                               DX, DY, DZ, SXL, SYL, SZL,
+     *                               GX, GY, GZ )
+      DOUBLE PRECISION X, Y, Z, XL, YL, ZL, XU, YU, ZU,
+     *                 GX, GY, GZ
+      DOUBLE PRECISION DX, DY, DZ, SXL, SYL, SZL
+C
+C  Compute the trial function for a trilinear element on a 3-D box
+C  with its origin at (XL,YL,ZL) and sides of lengths DX, DY and DZ.
+C  SXL, SYL and SZL are the scaled origin XL / DX, YL / DY and ZL / DZ.
+C  Also obtain its first and second derivatives.
+C
+C  For element with value 1 at LLL and 0 elsewhere.
+C  -----------------------------------------------
+C
+C            z
+C            ^         ^y
+C            | UUL    /             UUU
+C            |  0--------------------0
+C              /|   /               /|
+C         ULL / |  /           ULU / |
+C            0--------------------0  |
+C            |  |                 |  |
+C            |  0-----------------|--0
+C            | / LUL              | / LUU
+C            |/                   |/
+C            1--------------------0     ---->x
+C           LLL                  LLU
+C
+C  Figure of element with node names and values.
+C  --------------------------------------------
+C
+      DOUBLE PRECISION AX, AY, AZ, AXY, AYZ, AXZ
+      DOUBLE PRECISION EX, EY, EZ, ONE
+      PARAMETER      ( ONE = 1.0D+0 )
+      EX  = X  / DX
+      EY  = Y  / DY
+      EZ  = Z  / DZ
+C
+C  Compute the coefficients for the trilinear elements
+C
+      AXY = ONE + SZL
+      AXZ = ONE + SYL
+      AYZ = ONE + SXL
+      AX  = AXY * AXZ
+      AY  = AXY * AYZ
+      AZ  = AXZ * AYZ
+C
+C  Compute the function value.
+C
+      PSI = ONE
+C
+C  Compute the gradient value.
+C
+      GX  = ( - AX + AXY * EY + AXZ * EZ - EY * EZ ) / DX
+      GY  = ( - AY + AXY * EX + AYZ * EZ - EX * EZ ) / DY
+      GZ  = ( - AZ + AXZ * EX + AYZ * EY - EX * EY ) / DZ
+      RETURN
+      END
