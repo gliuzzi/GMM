@@ -29,14 +29,14 @@ The following arguments shall be specified:
 |---------------|-----------------------|---------|------------------------------------------------------|-------------------|
 | `-p`          | `--problem`    | `str`   | Problem Name               | None (required)   |
 | `-g_tol`          | `--grad_tol`           | `float`   | Termination condition on the gradient $\ell_\infty$-norm | `1e-6`   |  
-| `-m_iter`         | `--max_iter`      | `float`   | Termination condition on the number of iterations | `100000`   |
+| `-m_iter`         | `--max_iter`      | `int`   | Termination condition on the number of iterations | `100000`   |
 
 </div>
 
 
 ## Acknowledgements
 
-The results  of the experiments reported in Section 7 are avaialble in the `Results` folder. The performance profiles shown in the paper are also avialable in the same folder. We also report the results of ```cg_descent``` executed from ```SuiteOPT```.
+The results  of the experiments reported in Section 7 are avaialble in the `Results` folder. The performance profiles shown in the paper are also avialable in the same folder. We also report the results of ```cg_descent``` executed from [SuiteOPT](https://people.clas.ufl.edu/hager/software/) for reference.
 
 In case you employed our code for research purposes, please cite:
 
