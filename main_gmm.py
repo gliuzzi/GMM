@@ -10,9 +10,6 @@ import os
 import csv
 import argparse
 
-from Problems.TorchProblem import MLPProblem
-
-
 class Problem:
     def __init__(self, name, n=None):
         if n:
@@ -185,33 +182,39 @@ class Solver:
         xk = self.problem.get_x0()
         n_iters=0
         xk_1 = np.copy(xk)
-        f_1, _ = self.f_g(xk_1)
+        f_1 = self.f(xk_1)
         C_k = f_1
+        Q_k = 1
         alpha, beta = 0,0
-        aArm = 1
         g_norm = np.inf
         consecutive_no_dec = 0
         while True:
             g = self.g(xk)
             f = new_f if n_iters > 0 else f_1
            
-            g_norm = np.linalg.norm(g,self.gtol_ord)
+            g_norm = np.linalg.norm(g, self.gtol_ord)
            
-            if g_norm<self.grad_tol or n_iters >= self.max_iters:
+            if g_norm<self.grad_tol or n_iters >= self.max_iters or np.isnan(g).any():
                 break
 
             if n_iters == 0:
                 a_init = self.quad_step_unid(-g,xk,f)
-                aArm, new_f = self.armijoLS(x=xk, f=C_k, g=g, d=-g, alpha0=a_init, gamma=self.gamma, min_step=self.min_step)
-                C_k = (self.nm_param*C_k+new_f)/(self.nm_param+1)
+                f_for_ls = max(C_k, f)
+                aArm, new_f = self.armijoLS(x=xk, f=f_for_ls, g=g, d=-g, alpha0=a_init, gamma=self.gamma, min_step=self.min_step)
+                Q_kp1 = self.nm_param * Q_k + 1
+                C_k = (self.nm_param * C_k * Q_k + new_f) / Q_kp1
+                Q_k = Q_kp1
                 new_x = xk - aArm*g
                 alpha, beta = aArm, 0
             else:
                 ab = self.quadratic_plane_searchGMM(xk, xk_1, f, f_1, g, alpha, beta)
                 alpha, beta = ab[0], ab[1]
                 dir = -alpha*g + beta*(xk-xk_1)
-                eta, new_f = self.armijoLS(x=xk, f=C_k, g=g, d=dir, alpha0=1, gamma=self.gamma, min_step=self.min_step)
-                C_k = (self.nm_param*C_k+new_f)/(self.nm_param+1)
+                f_for_ls = max(C_k, f)
+                eta, new_f = self.armijoLS(x=xk, f=f_for_ls, g=g, d=dir, alpha0=1, gamma=self.gamma, min_step=self.min_step)
+                Q_kp1 = self.nm_param * Q_k + 1
+                C_k = (self.nm_param * C_k * Q_k + new_f) / Q_kp1
+                Q_k = Q_kp1
                 new_x = xk + eta*dir
             xk_1 = xk
             f_1, g_1 = f, g
@@ -284,9 +287,9 @@ class Solver:
         return best
 
 
-    def quad_step_unid(self,d,xk,f):
+    def quad_step_unid(self, d, xk, f, a_bar=1e-3):
         normd2 = np.linalg.norm(d)**2
-        return max(1e-4,normd2/min(1e9,max(1e-9,np.abs((self.f(xk-1e+3*d)+1e-3*normd2-f)/(1e-3)**2))))
+        return max(1e-4, normd2 / min(1e9, max(1e-9, (2 * (self.f(xk + a_bar*d) - f + a_bar * normd2)) / (a_bar**2) )))
 
 
     def perturb_Cholesky(self, g, H, norma_g, d2_norm, eps_H=1e-6):
@@ -315,7 +318,7 @@ class Solver:
            return d
 
 
-    def test_problem(self, solvers, eps_grad=1e-3, max_iters=5000, gamma=1e-4, min_step=1e-30, gtol_ord=2, out_folder="res_matlap"):
+    def test_problem(self, solvers, eps_grad=1e-3, max_iters=5000, gamma=1e-4, min_step=1e-30, gtol_ord=2, out_folder=None):
 
         res_tab = []
         for solver in solvers:
@@ -328,66 +331,37 @@ class Solver:
 
         table = tabulate(res_tab, headers=['Algorithm', 'prob', 't', 'n_it', 'f_opt', 'g_norm', 'fevals', 'gevals', 'tf', 'tg', 'to'], tablefmt='orgtbl')
         print(table)
-        fr=open(os.path.join(out_folder, "res_matlap.txt"), "a")
+        fr=open(os.path.join(out_folder, "results.txt"), "a")
         print(tabulate(res_tab, tablefmt='orgtbl'), file=fr)
         fr.close()
 
 
-
-CUTEST_PROBLEMS =   ['ARGLINA', 'ARGLINB', 'ARGLINC', 'ARGTRIGLS', 'ARWHEAD', 'BDEXP', 'BDQRTIC', 'BOX', 'BOXPOWER', 'BROWNAL',
-                     'BROYDN3DLS', 'BROYDN7D', 'BROYDNBDLS', 'BRYBND', 'CHAINWOO', 'CHEBYQAD', 'CHNRSNBM', 'CLPLATEA', 'CLPLATEB', 'CLPLATEC',
-                     'COSINE', 'CRAGGLVY', 'CURLY10', 'CURLY20', 'CURLY30', 'CVXBQP1', 'CYCLIC3LS', 'CYCLOOCFLS', 'CYCLOOCTLS', 'DEGDIAG',
-                     'DEGTRID', 'DEGTRID2', 'DIAGPQB', 'DIAGPQE', 'DIAGPQT', 'DIXMAANA1', 'DIXMAANB', 'DIXMAANC', 'DIXMAAND', 'DIXMAANE1',
-                     'DIXMAANF', 'DIXMAANG', 'DIXMAANH', 'DIXMAANI1', 'DIXMAANJ', 'DIXMAANK', 'DIXMAANL', 'DIXMAANM1', 'DIXMAANN', 'DIXMAANO',
-                     'DIXMAANP', 'DIXON3DQ', 'DQDRTIC', 'DQRTIC', 'EDENSCH', 'EIGENALS', 'EIGENBLS', 'EIGENCLS', 'ENGVAL1', 'EXTROSNB',
-                     'FLETBV3M', 'FLETCBV2', 'FLETCHCR', 'FMINSRF2', 'FMINSURF', 'FREUROTH', 'GENHUMPS', 'GENROSE', 'GENROSEB', 'GRIDGENA', 
-                     'HILBERTA', 'HILBERTB', 'INDEFM', 'INTEQNELS', 'JNLBRNG1', 'JNLBRNG2', 'JNLBRNGA', 'JNLBRNGB', 'KSSLS', 'LIARWHD',
-                     'LINVERSE', 'LMINSURF', 'LUKSAN11LS', 'LUKSAN12LS', 'LUKSAN13LS', 'LUKSAN14LS', 'LUKSAN15LS', 'LUKSAN16LS', 'LUKSAN17LS', 'LUKSAN21LS', 
-                     'LUKSAN22LS', 'MANCINO', 'MCCORMCK', 'MODBEALE', 'MOREBV', 'NCB20', 'NCB20B', 'NLMSURF', 'NOBNDTOR', 'NONCVXU2',
-                     'NONCVXUN', 'NONDIA', 'NONDQUAR', 'NONMSQRT', 'NONSCOMP', 'OBSTCLAE', 'OBSTCLAL', 'OBSTCLBL', 'OBSTCLBM', 'OBSTCLBU',
-                     'ODC', 'ODNAMUR', 'OSCIGRAD', 'OSCIPATH', 'PENALTY1', 'PENALTY2', 'PENALTY3', 'PENTDI', 'POWELLBC', 'POWELLSG',
-                     'POWER', 'PRICE3', 'PROBPENL', 'QING', 'QRTQUAD', 'QUARTC', 'RAYBENDL', 'RAYBENDS', 'SBRYBND', 'SCHMVETT',
-                     'SCOSINE', 'SCURLY10', 'SCURLY20', 'SCURLY30', 'SENSORS', 'SINEALI', 'SINQUAD', 'SPARSINE', 'SPARSQUR', 'SPIN2LS',
-                     'SPINLS', 'SROSENBR', 'SSBRYBND', 'SSC', 'SSCOSINE', 'STRTCHDV', 'TESTQUAD', 'TOINTGSS', 'TORSION1', 'TORSION2',
-                     'TORSION3', 'TORSION4', 'TORSION5', 'TORSION6', 'TORSIONA', 'TORSIONB', 'TORSIONC', 'TORSIOND', 'TORSIONE', 'TORSIONF',
-                     'TQUARTIC', 'TRIDIA', 'TRIGON1', 'TRIGON2', 'VANDANMSLS', 'VARDIM', 'VAREIGVL', 'WOODS']
-
-torch_problems = ['a1a_MLP_TANH', 'a2a_MLP_TANH', 'a3a_MLP_TANH', 'a4a_MLP_TANH', 'a5a_MLP_TANH', 'a6a_MLP_TANH', 'a7a_MLP_TANH', 'a8a_MLP_TANH', 'a9a_MLP_TANH', 
-                  'breast-cancer_scale_MLP_TANH', 'cod-rna_MLP_TANH', 'covtype.libsvm.binary.bz2_MLP_TANH', 'diabetes_scale_MLP_TANH', 'fourclass_scale_MLP_TANH',
-                  'german.numer_scale_MLP_TANH', 'gisette_scale.bz2_MLP_TANH', 'ijcnn1.bz2_MLP_TANH', 'liver-disorders_scale_MLP_TANH', 'phishing_MLP_TANH',
-                  'sonar_scale_MLP_TANH', 'svmguide1_MLP_TANH', 'svmguide3_MLP_TANH',
-                  'w1a_MLP_TANH', 'w2a_MLP_TANH', 'w3a_MLP_TANH', 'w4a_MLP_TANH', 'w5a_MLP_TANH', 'w6a_MLP_TANH', 'w7a_MLP_TANH', 'w8a_MLP_TANH']
-
-TORCH_PROBLEMS = []
-for n_seed in ['42', '420', '16007']:
-    for p in torch_problems:
-        TORCH_PROBLEMS.append(p + "_" + n_seed)
+CUTEST_PROBLEMS =   ["ARWHEAD","BDQRTIC","BOX","BOXPOWER","BROYDN3DLS","BROYDN7D","BROYDNBDLS","BRYBND",
+                     "CHAINWOO","COSINE","CRAGGLVY","CURLY10","CURLY20","CURLY30","DIXMAANA1","DIXMAANB",
+                     "DIXMAANC","DIXMAAND","DIXMAANE1","DIXMAANF","DIXMAANG","DIXMAANH","DIXMAANI1",
+                     "DIXMAANJ","DIXMAANK","DIXMAANL","DIXMAANM1","DIXMAANN","DIXMAANO","DIXMAANP","DIXON3DQ",
+                     "DQDRTIC","DQRTIC","EDENSCH","EG2","EIGENALS","EIGENBLS","EIGENCLS","ENGVAL1","EXTROSNB",
+                     "FLETBV3M","FLETCBV2","FLETCHCR","FMINSRF2","FMINSURF","FREUROTH","GENHUMPS","JIMACK",
+                     "KSSLS","LIARWHD","MOREBV","MSQRTALS","MSQRTBLS","NCB20","NCB20B","NONCVXU2","NONDIA",
+                     "NONDQUAR","PENALTY1","POWELLSG","POWER","QUARTC","SCHMVETT","SINQUAD","SINQUAD2",
+                     "SPARSINE","SPARSQUR","SPINLS","SPMSRTLS","SROSENBR","SSBRYBND","SSCOSINE","TOINTGSS",
+                     "TQUARTIC","TRIDIA","VAREIGVL","WOODS"]
 
 
-parser = argparse.ArgumentParser(prog='QPS', description='Algorithm QPS')
+parser = argparse.ArgumentParser(prog='main_GMM', description='Test suite for a Gradient Method with Momentum')
 parser.add_argument('-p', '--problem', type=str, help='Problem name')
 parser.add_argument('-g_tol', '--grad_tol', default=1e-6, type=float)
-parser.add_argument('-l_reg', default=1e-3, type=float)
-parser.add_argument('-m_iter', '--max_iter', default=5000, type=int)
+parser.add_argument('-m_iter', '--max_iter', default=100000, type=int)
 
 args = parser.parse_args()
 
 if args.problem == 'cutest':
     problems = CUTEST_PROBLEMS
 
-elif 'cutest_' in args.problem:
-    cutest_part = int(args.problem.split("_")[1])
-    assert cutest_part >= 1 and cutest_part <= 12
-    problems = CUTEST_PROBLEMS[14*(cutest_part-1):14*(cutest_part)]
-    print(len(problems), problems)
-
-elif args.problem == 'torch':
-    problems = TORCH_PROBLEMS
-
 else:
     problems = [args.problem]
 
-solvers = ['GMM', 'cg_descent', 'scipy_lbfgs']
+solvers = ['GMM', 'cg_descent', 'scipy_lbfgs', 'scipy_cg']
 
 # Initialize Logs
 now = datetime.now()
@@ -399,17 +373,15 @@ for solver in solvers:
         writer = csv.writer(out_csv)
         writer.writerow(['prob', 't', 'n_it', 'f_opt', 'g_norm', 'fevals', 'gevals'])
 
-fr=open(os.path.join(out_folder, "res_matlap.txt"), "a")
-print(f"g_tol={args.grad_tol}, l_reg={args.l_reg}, m_iter={args.max_iter}", file=fr)
+fr=open(os.path.join(out_folder, "results.txt"), "a")
+print(f"g_tol={args.grad_tol}, m_iter={args.max_iter}", file=fr)
 fr.close()
 
 
 for p in problems:
-    # print('{}'.format(p))
     if p in CUTEST_PROBLEMS:
         P = Problem(p)
-    elif p in TORCH_PROBLEMS:
-        P = MLPProblem(p, l_reg=args.l_reg)
+    else:
+        raise NotImplementedError("No such problem")
     S = Solver(P)
     S.test_problem(solvers, max_iters=args.max_iter, eps_grad=args.grad_tol, gtol_ord=np.inf, out_folder=out_folder)    
-
